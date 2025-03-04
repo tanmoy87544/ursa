@@ -3,6 +3,7 @@ Execution components for the scientific agent framework.
 Handles executing solution plans, running code, and managing results.
 """
 
+import sys
 import logging
 import json
 import os
@@ -121,24 +122,44 @@ class Executor:
             # General steps (analysis, evaluation, etc.)
             return self._execute_general_step(step, previous_results)
     
+    """
+    Updated execute_step method to better integrate with the improved error handling system.
+    """
+    
     def _execute_code_step(self, step: Dict[str, Any], previous_results: Dict[str, Any]) -> Dict[str, Any]:
         """Execute a step that requires code."""
         logger.info(f"Executing code step: {step.get('name')}")
         
         try:
-            # Generate code based on step description and previous results
-            code_result = self.generate_code(step, previous_results)
+            # Check if this is a modified step with fixed code from error handling
+            if "fixed_code" in step:
+                logger.info("Using previously fixed code")
+                code = step["fixed_code"]
+                language = "python"
+            # Check if this is a simplified step
+            elif "simplified_code" in step:
+                logger.info("Using simplified code")
+                code = step["simplified_code"]
+                language = "python"
+            else:
+                # Generate code based on step description and previous results
+                code_result = self.generate_code(step, previous_results)
+                code = code_result["code"]
+                language = code_result["language"]
             
             # Execute the generated code
-            execution_result = self.execute_code(code_result["code"], code_result["language"])
+            execution_result = self.execute_code(code, language)
             
             # Analyze the execution result
             analysis = self._analyze_execution_result(step, execution_result)
             
+            # Determine if the execution was successful
+            execution_successful = not execution_result.get("error")
+            
             return {
-                "status": "completed" if not execution_result.get("error") else "failed",
-                "code": code_result["code"],
-                "language": code_result["language"],
+                "status": "completed" if execution_successful else "failed",
+                "code": code,
+                "language": language,
                 "execution_result": execution_result,
                 "analysis": analysis,
                 "timestamp": time.time()
@@ -212,6 +233,7 @@ class Executor:
                 "outputs": {{"output_name": "output_value", ...}}
             }}
             """
+            print("DEBUG TASK PROMPT: ", task_prompt)
             
             result = self.llm.generate_with_json_output(task_prompt, {})
             
@@ -223,15 +245,21 @@ class Executor:
             
         except Exception as e:
             logger.error(f"Error executing general step: {str(e)}")
+            # print("RESULT: ", result)
             return {
                 "status": "failed",
                 "error": str(e),
                 "timestamp": time.time()
             }
+
+    """
+    Enhanced error handling and recovery for code execution in the scientific agent.
+    This improves the handle_error method to implement iterative debugging.
+    """
     
     def handle_error(self, plan: Dict[str, Any], step_index: int, error: str, previous_results: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Handle execution errors.
+        Handle execution errors with iterative debugging.
         
         Args:
             plan: The solution plan
@@ -252,7 +280,269 @@ class Executor:
         
         step = steps[step_index]
         
-        # Generate error handling strategy
+        # Check if this step has code that failed
+        if step.get("requires_code", False) and step_index in previous_results:
+            step_result = previous_results.get(step["id"], {})
+            original_code = step_result.get("code", "")
+            execution_error = step_result.get("execution_result", {}).get("error", error)
+            
+            return self._debug_and_fix_code(step, original_code, execution_error, previous_results)
+        
+        # For non-code steps or if we don't have the original code
+        return self._generate_general_error_handling(step, error, previous_results)
+    
+    def _debug_and_fix_code(self, step: Dict[str, Any], original_code: str, error: str, previous_results: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Debug and fix code that failed during execution.
+        
+        Args:
+            step: The step that failed
+            original_code: The original code that failed
+            error: The error message
+            previous_results: Results from previous steps
+            
+        Returns:
+            Error handling result with fixed code
+        """
+        logger.info(f"Debugging and fixing code for step: {step.get('name')}")
+        
+        # Number of debugging attempts
+        max_debug_attempts = 3
+        debug_history = []
+        
+        for attempt in range(max_debug_attempts):
+            # Create debugging prompt with error and prior attempts
+            debug_prompt = self._create_debug_prompt(step, original_code, error, debug_history)
+            
+            try:
+                # Generate fixed code
+                fix_result = self.llm.generate_with_json_output(debug_prompt, {
+                    "type": "object",
+                    "properties": {
+                        "error_analysis": {"type": "string"},
+                        "fixed_code": {"type": "string"},
+                        "changes_made": {"type": "string"}
+                    }
+                })
+                
+                # Extract the fixed code
+                fixed_code = fix_result.get("fixed_code", "")
+                error_analysis = fix_result.get("error_analysis", "")
+                changes_made = fix_result.get("changes_made", "")
+                
+                if not fixed_code:
+                    logger.warning("Debugging generated empty code. Trying again...")
+                    debug_history.append({
+                        "attempt": attempt + 1,
+                        "error": "Generated empty code",
+                        "analysis": error_analysis
+                    })
+                    continue
+                
+                # Try executing the fixed code
+                logger.info(f"Executing fixed code (attempt {attempt + 1})")
+                execution_result = self.execute_code(fixed_code, "python")
+                
+                # Check if the execution was successful
+                if not execution_result.get("error"):
+                    logger.info(f"Code fixed successfully on attempt {attempt + 1}")
+                    return {
+                        "error_resolved": True,
+                        "resolution_strategy": "code_fixed",
+                        "fixed_code": fixed_code,
+                        "original_code": original_code,
+                        "error_analysis": error_analysis,
+                        "execution_result": execution_result,
+                        "debug_attempts": attempt + 1,
+                        "changes_made": changes_made
+                    }
+                
+                # If still failing, add to debug history and try again
+                debug_history.append({
+                    "attempt": attempt + 1,
+                    "error": execution_result.get("error", "Unknown error"),
+                    "analysis": error_analysis,
+                    "changes": changes_made
+                })
+                
+                error = execution_result.get("error", "")
+                logger.warning(f"Fixed code still has errors on attempt {attempt + 1}: {error}")
+                
+            except Exception as e:
+                logger.error(f"Error during debugging attempt {attempt + 1}: {str(e)}")
+                debug_history.append({
+                    "attempt": attempt + 1,
+                    "error": str(e),
+                    "analysis": "Exception during debugging"
+                })
+        
+        # If we've exhausted all attempts, see if we can simplify the task
+        simplify_result = self._try_simplify_step(step, debug_history, previous_results)
+        if simplify_result.get("error_resolved", False):
+            return simplify_result
+        
+        # If all attempts failed, return the failure result
+        logger.error(f"Failed to fix code after {max_debug_attempts} attempts")
+        return {
+            "error_resolved": False,
+            "resolution_strategy": "debugging_failed",
+            "debug_history": debug_history,
+            "recommendation": "Manual intervention required to fix code"
+        }
+    
+    def _create_debug_prompt(self, step: Dict[str, Any], code: str, error: str, debug_history: List[Dict[str, Any]]) -> str:
+        """
+        Create a prompt for debugging and fixing code.
+        
+        Args:
+            step: The step that failed
+            code: The code to debug
+            error: The error message
+            debug_history: History of previous debugging attempts
+            
+        Returns:
+            Debugging prompt
+        """
+        # Start with basic context
+        prompt = f"""
+        You are debugging Python code that failed during execution.
+        
+        STEP DESCRIPTION:
+        {json.dumps(step, indent=2)}
+        
+        ORIGINAL CODE:
+        ```python
+        {code}
+        ```
+        
+        ERROR MESSAGE:
+        {error}
+        """
+        
+        # Add debug history if available
+        if debug_history:
+            prompt += "\n\nPREVIOUS DEBUGGING ATTEMPTS:\n"
+            for i, attempt in enumerate(debug_history):
+                prompt += f"""
+                Attempt {i+1}:
+                - Analysis: {attempt.get('analysis', 'None')}
+                - Error: {attempt.get('error', 'None')}
+                - Changes Made: {attempt.get('changes', 'None')}
+                """
+        
+        # Add instructions for fixing
+        prompt += """
+        Please analyze the error and fix the code. Consider:
+        1. Syntax errors or typos
+        2. Logic errors in the implementation
+        3. Missing imports or dependencies
+        4. File path issues
+        5. Data structure mismatches
+        
+        Your task is to:
+        1. Analyze what went wrong
+        2. Fix the code to resolve the error
+        3. Make only the necessary changes to fix the issues
+        
+        Format your response as a JSON object with the following structure:
+        {
+            "error_analysis": "Detailed analysis of what went wrong",
+            "fixed_code": "The complete fixed code (not just the changed parts)",
+            "changes_made": "Description of the changes you made to fix the code"
+        }
+        """
+        
+        return prompt
+    
+    def _try_simplify_step(self, step: Dict[str, Any], debug_history: List[Dict[str, Any]], previous_results: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Try to simplify the step if debugging fails.
+        
+        Args:
+            step: The step that failed
+            debug_history: History of previous debugging attempts
+            previous_results: Results from previous steps
+            
+        Returns:
+            Simplified step result
+        """
+        logger.info(f"Attempting to simplify step: {step.get('name')}")
+        
+        simplify_prompt = f"""
+        You are trying to simplify a task that has repeatedly failed despite debugging attempts.
+        
+        ORIGINAL TASK:
+        {json.dumps(step, indent=2)}
+        
+        DEBUGGING HISTORY:
+        {json.dumps(debug_history, indent=2)}
+        
+        Please create a simplified version of this task that has a higher chance of success.
+        The simplified task should:
+        1. Achieve the core objective with reduced scope if necessary
+        2. Use a more reliable and simple approach
+        3. Include more robust error handling
+        4. Focus on the most essential parts of the task
+        
+        Format your response as a JSON object with the following structure:
+        {{
+            "simplified_step": {{
+                "name": "Simplified step name",
+                "description": "Simplified step description",
+                "requires_code": true,
+                "expected_outputs": ["Output 1", "Output 2"],
+                "success_criteria": ["Criterion 1", "Criterion 2"]
+            }},
+            "simplified_code": "The complete code for the simplified task",
+            "simplification_rationale": "Explanation of how and why you simplified the task"
+        }}
+        """
+        
+        try:
+            simplify_result = self.llm.generate_with_json_output(simplify_prompt, {})
+            
+            simplified_step = simplify_result.get("simplified_step", {})
+            simplified_code = simplify_result.get("simplified_code", "")
+            
+            if not simplified_step or not simplified_code:
+                logger.warning("Failed to generate a simplified step")
+                return {"error_resolved": False}
+            
+            # Execute the simplified code
+            execution_result = self.execute_code(simplified_code, "python")
+            
+            # Check if the simplified code works
+            if not execution_result.get("error"):
+                logger.info("Simplified task executed successfully")
+                return {
+                    "error_resolved": True,
+                    "resolution_strategy": "task_simplified",
+                    "simplified_step": simplified_step,
+                    "original_step": step,
+                    "execution_result": execution_result,
+                    "simplified_code": simplified_code,
+                    "simplification_rationale": simplify_result.get("simplification_rationale", "")
+                }
+            else:
+                logger.warning("Simplified task still has errors")
+                return {"error_resolved": False}
+            
+        except Exception as e:
+            logger.error(f"Error during step simplification: {str(e)}")
+            return {"error_resolved": False}
+    
+    def _generate_general_error_handling(self, step: Dict[str, Any], error: str, previous_results: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Generate general error handling strategy for non-code steps.
+        
+        Args:
+            step: The step that failed
+            error: Error message
+            previous_results: Results from previous steps
+            
+        Returns:
+            Error handling result
+        """
         error_prompt = f"""
         You are debugging an error in a scientific workflow.
         
@@ -295,9 +585,6 @@ class Executor:
                 logger.info(f"Retrying step with modifications: {step.get('name')}")
                 modified_step = error_handling.get("modified_step", step)
                 
-                # Update the step in the plan
-                steps[step_index] = modified_step
-                
                 return {
                     "error_resolved": True,
                     "resolution_strategy": "retry_with_modifications",
@@ -314,7 +601,7 @@ class Executor:
                 
         except Exception as e:
             logger.error(f"Error in error handling: {str(e)}")
-            return {"error_resolved": False}
+            return {"error_resolved": False}    
     
     def check_completion(self, plan: Dict[str, Any], current_step_index: int, results: Dict[str, Any]) -> Tuple[bool, int]:
         """
@@ -391,6 +678,7 @@ class Executor:
         
         Return the code only, without any additional explanations.
         """
+        print("DEBUG CODE PROMPT: ", code_prompt)
         
         try:
             code = self.llm.generate(code_prompt)
@@ -427,7 +715,6 @@ class Executor:
                 "generation_time": time.time(),
                 "error": str(e)
             }
-    
     def execute_code(self, code: str, language: str = "python") -> Dict[str, Any]:
         """
         Execute code in a controlled environment.
@@ -450,25 +737,40 @@ class Executor:
             }
         
         # Create a temporary directory for execution
-        execution_dir = tempfile.mkdtemp(dir=self.workspace_dir)
+        # Don't use subdirectories that might cause path confusion
+        execution_dir = tempfile.mkdtemp(prefix="exec_", dir=self.workspace_dir)
+        logger.info(f"Created execution directory: {execution_dir}")
         
         # Write code to a file
         code_file = os.path.join(execution_dir, "code.py")
-        with open(code_file, "w") as f:
-            f.write(code)
+        try:
+            with open(code_file, "w") as f:
+                f.write(code)
+            logger.info(f"Written code to file: {code_file}")
+        except Exception as e:
+            logger.error(f"Failed to write code to file: {str(e)}")
+            return {
+                "output": "",
+                "error": f"Failed to write code to file: {str(e)}",
+                "execution_time": 0
+            }
         
         # Execute the code
         start_time = time.time()
         process = None
         
         try:
-            # Run the code with timeout
+            # Use absolute path to the code file
+            absolute_code_path = os.path.abspath(code_file)
+            logger.info(f"Executing code file (absolute path): {absolute_code_path}")
+            
+            # Run the code with timeout using the absolute path
             process = subprocess.Popen(
-                ["python", code_file],
+                [sys.executable, absolute_code_path],  # Use sys.executable for the correct Python interpreter
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True,
-                cwd=execution_dir
+                cwd=execution_dir  # Set current working directory to execution_dir
             )
             
             stdout, stderr = process.communicate(timeout=self.timeout)
@@ -480,7 +782,7 @@ class Executor:
             for root, _, files in os.walk(execution_dir):
                 for file in files:
                     if file != "code.py":
-                        file_path = os.path.join(root, file)
+                        file_path = os.path.abspath(os.path.join(root, file))
                         created_files.append(file_path)
             
             return {
@@ -585,6 +887,7 @@ class Executor:
         
         Format your response as a JSON object with appropriate analysis results.
         """
+        print("DEBUG ANALYSIS PROMPT: ", analysis_prompt)
         
         try:
             analysis = self.llm.generate_with_json_output(analysis_prompt, {})
@@ -655,6 +958,7 @@ class Executor:
         
         Return only the Python code without additional explanations.
         """
+        print("DEBUG VIZ PROMPT: ", viz_prompt)
         
         try:
             code = self.llm.generate(viz_prompt)

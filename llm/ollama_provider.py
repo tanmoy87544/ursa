@@ -3,6 +3,7 @@ Ollama LLM Provider for scientific agent framework.
 Provides a uniform interface for interactions with Ollama-served LLMs.
 """
 
+import re
 import json
 import logging
 import requests
@@ -16,7 +17,7 @@ class OllamaProvider:
     def __init__(self, 
                  model_name: str = "llama3",
                  base_url: str = "http://localhost:11434",
-                 temperature: float = 0.1,
+                 temperature: float = 0.6,
                  max_tokens: int = 4096,
                  system_prompt: Optional[str] = None):
         """
@@ -112,8 +113,7 @@ class OllamaProvider:
                 result = self.generate(formatted_prompt, **kwargs)
                 
                 # Try to extract JSON if it's surrounded by markdown code blocks or other text
-                json_str = self._extract_json(result)
-                parsed_result = json.loads(json_str)
+                parsed_result = self._extract_json(result)
                 return parsed_result
             
             except json.JSONDecodeError:
@@ -126,18 +126,50 @@ class OllamaProvider:
         # Should never reach here due to the exception in the loop
         return {}
     
-    def _extract_json(self, text: str) -> str:
-        """Extract JSON from text that might contain markdown or other content."""
-        # Try to extract from code blocks first
-        if "```json" in text:
-            parts = text.split("```json")
-            if len(parts) > 1:
-                json_part = parts[1].split("```")[0]
-                return json_part.strip()
-        elif "```" in text:
-            parts = text.split("```")
-            if len(parts) > 1:
-                return parts[1].strip()
+    def _extract_json(self, text: str) -> dict:
+        """
+        Extract a JSON object from text that might contain markdown or other content.
         
-        # If no code blocks, return the original text
-        return text.strip()
+        The function tries three approaches:
+          1. Extract JSON enclosed in a markdown code block labeled as JSON.
+          2. Extract JSON enclosed in any markdown code block.
+          3. If no code blocks are found, attempt to extract JSON by finding the first '{'
+             and the last '}' in the text.
+        
+        Returns:
+            A Python dict parsed from the JSON string.
+        
+        Raises:
+            ValueError: If no valid JSON object is found.
+        """
+        # Approach 1: Look for a markdown code block specifically labeled as JSON.
+        json_block = re.search(r'```json\s*(\{.*\})\s*```', text, re.DOTALL)
+        if json_block:
+            json_str = json_block.group(1).strip()
+            try:
+                return json.loads(json_str)
+            except json.JSONDecodeError:
+                # If the labeled block fails, fall through to next approaches.
+                pass
+    
+        # Approach 2: Look for any code block demarcated by triple backticks.
+        generic_block = re.search(r'```(.*?)```', text, re.DOTALL)
+        if generic_block:
+            json_str = generic_block.group(1).strip()
+            try:
+                return json.loads(json_str)
+            except json.JSONDecodeError:
+                pass
+    
+        # Approach 3: Look for the first occurrence of '{' and the last occurrence of '}'.
+        start = text.find('{')
+        end = text.rfind('}')
+        if start != -1 and end != -1 and start < end:
+            json_str = text[start:end+1].strip()
+            try:
+                return json.loads(json_str)
+            except json.JSONDecodeError:
+                pass
+        print("JSONLESS TEXT: ", text)
+        raise ValueError("No valid JSON object found in the provided text.")
+

@@ -78,6 +78,10 @@ class PlanningState(BaseModel):
     phase: Literal["initial", "step_planning", "dependency_analysis", "resource_allocation", "completed"] = Field(
         default="initial", description="Current phase of planning")
 
+"""
+Update to the ExecutionState class to include debugging information.
+"""
+
 class ExecutionState(BaseModel):
     """State for plan execution workflow"""
     plan: Dict[str, Any] = Field(description="The solution plan to execute")
@@ -89,6 +93,9 @@ class ExecutionState(BaseModel):
     error: Optional[str] = Field(default=None, description="Error message if execution failed")
     phase: Literal["setup", "execution", "error_handling", "completed"] = Field(
         default="setup", description="Current phase of execution")
+    debug_attempts: int = Field(default=0, description="Number of debug attempts for current step")
+    debug_history: List[Dict[str, Any]] = Field(
+        default_factory=list, description="History of debugging attempts")
 
 class ScientificWorkflows:
     """Factory for creating scientific workflow graphs using LangGraph."""

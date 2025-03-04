@@ -148,15 +148,32 @@ class ScientificAgent:
             self.memory.add("problem_statement", problem_statement)
             self.memory.add("start_time", start_time)
             
+            #### for ii in range(100):
             # Phase 1: Problem analysis
+            print("PROBLEM STATEMENT: ", problem_statement)
             analysis_result = self._analyze_problem(problem_statement)
             
+            print("ANALYSIS RESULT: ", analysis_result)
             # Phase 2: Solution planning
             plan_result = self._create_solution_plan(analysis_result)
             
+            print("PLAN RESULT: ", plan_result)
             # Phase 3: Execute solution plan
             execution_result = self._execute_solution(plan_result)
+            #### assess_done = self._assess_completeness(
+            ####     problem_statement,
+            ####     analysis_result,
+            ####     plan_result,
+            ####     execution_result
+            #### )
+
+            #### if assess_done["properties"]["Objective Met?"]:
+            ####     break
+            ####     continue_solving = False
+            #### else:
+            ####     print("Continuing because: ",assess_done["properties"]["Reasoning"])
             
+            print("EXECUTION RESULT: ", execution_result)
             # Phase 4: Evaluate and summarize results
             summary = self._summarize_solution(
                 problem_statement,
@@ -165,12 +182,16 @@ class ScientificAgent:
                 execution_result
             )
             
+            print("SUMMARY: ", summary)
             # Save everything to memory
             self.memory.add("analysis_result", analysis_result)
             self.memory.add("plan_result", plan_result)
             self.memory.add("execution_result", execution_result)
             self.memory.add("summary", summary)
             self.memory.add("end_time", time.time())
+       
+            self.memory.memory_file = "memory.json"
+            self.memory._save_memory()
             
             # Return the final result
             return {
@@ -193,6 +214,11 @@ class ScientificAgent:
                 "error": str(e),
                 "duration_seconds": time.time() - start_time
             }
+
+    """
+    Update for the _analyze_problem method in ScientificAgent class.
+    Handles the case where final_state might be an AddableValuesDict instead of a ProblemState.
+    """
     
     def _analyze_problem(self, problem_statement: str) -> Dict[str, Any]:
         """Analyze and formalize the problem."""
@@ -207,15 +233,64 @@ class ScientificAgent:
             identify_components_fn=self.reasoner.identify_components
         )
         
+        # Get the final state from the workflow
         final_state = problem_analysis_workflow.invoke(initial_state)
         
-        return {
-            "formalized_problem": final_state.formalized_problem,
-            "variables": final_state.variables,
-            "constraints": final_state.constraints,
-            "domains": final_state.domains,
-            "approaches": final_state.approaches
-        }
+        # Handle different return types based on LangGraph version
+        try:
+            # Try accessing attributes directly (older LangGraph versions)
+            return {
+                "formalized_problem": final_state.formalized_problem,
+                "variables": final_state.variables,
+                "constraints": final_state.constraints,
+                "domains": final_state.domains,
+                "approaches": final_state.approaches
+            }
+        except AttributeError:
+            # For newer LangGraph versions that return a dict-like object
+            # or when final_state doesn't have the expected attributes
+            logger.info("Using dictionary access for final state (newer LangGraph API)")
+            try:
+                # Try dictionary access
+                return {
+                    "formalized_problem": final_state.get("formalized_problem", {}),
+                    "variables": final_state.get("variables", []),
+                    "constraints": final_state.get("constraints", []),
+                    "domains": final_state.get("domains", []),
+                    "approaches": final_state.get("approaches", [])
+                }
+            except (AttributeError, TypeError):
+                # If that also fails, try converting to dict first
+                try:
+                    state_dict = dict(final_state)
+                    return {
+                        "formalized_problem": state_dict.get("formalized_problem", {}),
+                        "variables": state_dict.get("variables", []),
+                        "constraints": state_dict.get("constraints", []),
+                        "domains": state_dict.get("domains", []),
+                        "approaches": state_dict.get("approaches", [])
+                    }
+                except Exception as e:
+                    logger.error(f"Failed to extract data from workflow result: {str(e)}")
+                    # Return minimal data as fallback
+                    return {
+                        "formalized_problem": {
+                            "problem_restatement": problem_statement,
+                            "objective": "Solve the given problem",
+                            "research_questions": [],
+                            "hypotheses": [],
+                            "success_criteria": ["Provide a solution to the problem"]
+                        },
+                        "variables": [],
+                        "constraints": [],
+                        "domains": [],
+                        "approaches": []
+                    }
+
+    """
+    Update for the _create_solution_plan method in ScientificAgent class.
+    Handles the case where final_state might be an AddableValuesDict instead of a PlanningState.
+    """
     
     def _create_solution_plan(self, problem_analysis: Dict[str, Any]) -> Dict[str, Any]:
         """Create a solution plan based on problem analysis."""
@@ -231,15 +306,57 @@ class ScientificAgent:
             allocate_resources_fn=self.planner.allocate_resources
         )
         
+        # Get the final state from the workflow
         final_state = planning_workflow.invoke(initial_state)
         
-        return {
-            "plan": {
-                "steps": final_state.plan_steps,
-                "dependencies": final_state.dependencies,
-                "resources": final_state.resources_needed
+        # Handle different return types based on LangGraph version
+        try:
+            # Try accessing attributes directly
+            return {
+                "plan": {
+                    "steps": final_state.plan_steps,
+                    "dependencies": final_state.dependencies,
+                    "resources": final_state.resources_needed
+                }
             }
-        }
+        except AttributeError:
+            # For newer LangGraph versions or when final_state doesn't have expected attributes
+            logger.info("Using dictionary access for final state (newer LangGraph API)")
+            try:
+                # Try dictionary access
+                return {
+                    "plan": {
+                        "steps": final_state.get("plan_steps", []),
+                        "dependencies": final_state.get("dependencies", {}),
+                        "resources": final_state.get("resources_needed", {})
+                    }
+                }
+            except (AttributeError, TypeError):
+                # If that also fails, try converting to dict first
+                try:
+                    state_dict = dict(final_state)
+                    return {
+                        "plan": {
+                            "steps": state_dict.get("plan_steps", []),
+                            "dependencies": state_dict.get("dependencies", {}),
+                            "resources": state_dict.get("resources_needed", {})
+                        }
+                    }
+                except Exception as e:
+                    logger.error(f"Failed to extract data from planning workflow result: {str(e)}")
+                    # Return minimal plan as fallback
+                    return {
+                        "plan": {
+                            "steps": [],
+                            "dependencies": {},
+                            "resources": {}
+                        }
+                    }        
+
+    """
+    Update for the _execute_solution method in ScientificAgent class.
+    Handles the case where final_state might be an AddableValuesDict instead of an ExecutionState.
+    """
     
     def _execute_solution(self, plan_result: Dict[str, Any]) -> Dict[str, Any]:
         """Execute the solution plan."""
@@ -256,14 +373,64 @@ class ScientificAgent:
             check_completion_fn=self.executor.check_completion
         )
         
+        # Get the final state from the workflow
         final_state = execution_workflow.invoke(initial_state)
         
-        return {
-            "status": final_state.status,
-            "results": final_state.results,
-            "error": final_state.error
-        }
+        # Handle different return types based on LangGraph version
+        try:
+            # Try accessing attributes directly
+            return {
+                "status": final_state.status,
+                "results": final_state.results,
+                "error": final_state.error
+            }
+        except AttributeError:
+            # For newer LangGraph versions or when final_state doesn't have expected attributes
+            logger.info("Using dictionary access for final state (newer LangGraph API)")
+            try:
+                # Try dictionary access
+                return {
+                    "status": final_state.get("status", "unknown"),
+                    "results": final_state.get("results", {}),
+                    "error": final_state.get("error")
+                }
+            except (AttributeError, TypeError):
+                # If that also fails, try converting to dict first
+                try:
+                    state_dict = dict(final_state)
+                    return {
+                        "status": state_dict.get("status", "unknown"),
+                        "results": state_dict.get("results", {}),
+                        "error": state_dict.get("error")
+                    }
+                except Exception as e:
+                    logger.error(f"Failed to extract data from execution workflow result: {str(e)}")
+                    # Return minimal execution result as fallback
+                    return {
+                        "status": "failed",
+                        "results": {},
+                        "error": f"Failed to extract execution results: {str(e)}"
+                    }    
     
+    def _assess_completeness(self, 
+                           problem_statement: str,
+                           analysis_result: Dict[str, Any],
+                           plan_result: Dict[str, Any],
+                           execution_result: Dict[str, Any]) -> Dict[str, Any]:
+        """Create a comprehensive summary of the solution."""
+        logger.info("Assessing completeness")
+        
+        summary = self.reasoner.assess_completeness(
+            problem_statement=problem_statement,
+            formalized_problem=analysis_result.get("formalized_problem", {}),
+            solution_plan=plan_result.get("plan", {}),
+            execution_results=execution_result.get("results", {}),
+            execution_status=execution_result.get("status", "unknown")
+        )
+        print("ASSESSMENT: ", summary)
+        
+        return summary
+
     def _summarize_solution(self, 
                            problem_statement: str,
                            analysis_result: Dict[str, Any],

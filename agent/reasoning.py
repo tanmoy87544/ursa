@@ -327,6 +327,73 @@ class Reasoner:
                 "next_steps": ["Review raw data and retry analysis"]
             }
     
+    def assess_completeness(self, 
+                        problem_statement: str,
+                        formalized_problem: Dict[str, Any],
+                        solution_plan: Dict[str, Any],
+                        execution_results: Dict[str, Any],
+                        execution_status: str) -> Dict[str, Any]:
+        """
+        Generate a comprehensive summary of the scientific investigation.
+        
+        Args:
+            problem_statement: Original problem statement
+            formalized_problem: Structured problem representation
+            solution_plan: Solution plan with steps
+            execution_results: Results from executed steps
+            execution_status: Status of execution (completed, failed, etc.)
+            
+        Returns:
+            Summary assessment of whether the goals have been completed
+        """
+        logger.info("Assessing whether goals have been met")
+        
+        summary_prompt = f"""
+        You are a scientific critic assessing whether the current results met the goals that were set out.
+        
+        ORIGINAL PROBLEM:
+        {problem_statement}
+        
+        FORMALIZED PROBLEM:
+        {json.dumps(formalized_problem, indent=2)}
+        
+        SOLUTION APPROACH:
+        {json.dumps(solution_plan, indent=2)}
+        
+        EXECUTION RESULTS:
+        {json.dumps(execution_results, indent=2)}
+        
+        EXECUTION STATUS:
+        {execution_status}
+        
+        Thnk through the solution approach and execution results and decide whether the results meet the problem goals.
+        
+        Format your response as a JSON with the following schema:\
+        {{
+            "Objective Met?": True or False,
+            "Reasoning": "Why you have decided the objective was or wasnt met"
+        }}
+        """
+        
+        try:
+            summary = self.llm.generate_with_json_output(summary_prompt, {
+                "type": "object",
+                "properties": {
+                    "Objective Met?": {"type": "bool"},
+                    "Reasoning": {"type": "string"}
+                }
+            })
+            
+            logger.debug(f"Decided if we are done: {json.dumps(summary, indent=2)}")
+            return summary
+            
+        except Exception as e:
+            logger.error(f"Error generating summary: {str(e)}")
+            # Return minimal summary
+            return {"properties": {
+                    "Objective Met?": {"type": "bool"},
+                    "Reasoning": {"type": "string"}}}
+
     def generate_summary(self, 
                         problem_statement: str,
                         formalized_problem: Dict[str, Any],
