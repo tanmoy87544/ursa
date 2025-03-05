@@ -242,6 +242,7 @@ class ScientificWorkflows:
         # Define the nodes
         def prepare_step(state: ExecutionState) -> ExecutionState:
             """Prepare the current step for execution"""
+            print("prepare_step CURRENT STEP: ", state.current_step_index)
             logger.info(f"Preparing step {state.current_step_index + 1}/{len(state.plan['steps'])}")
             prepared_state = prepare_step_fn(state.plan, state.current_step_index, state.results)
             return state.model_copy(update={
@@ -254,6 +255,7 @@ class ScientificWorkflows:
             try:
                 logger.info(f"Executing step {state.current_step_index + 1}/{len(state.plan['steps'])}")
                 current_step = state.plan["steps"][state.current_step_index]
+                print("execute_step CURRENT STEP: ", state.current_step_index, current_step)
                 step_result = execute_step_fn(current_step, state.results)
                 
                 # Update results with this step's output
@@ -295,7 +297,7 @@ class ScientificWorkflows:
                     "phase": "completed"
                 })
         
-        def check_completion(state: ExecutionState) -> Dict[str, Any]:
+        def check_completion(state: ExecutionState) -> ExecutionState: # -> Dict[str, Any]:
             """Check if execution is complete and advance step if not"""
             logger.info("Checking completion status")
             is_complete, next_step = check_completion_fn(
@@ -303,27 +305,23 @@ class ScientificWorkflows:
                 state.current_step_index, 
                 state.results
             )
+            print("check_completion CURRENT STEP: ", state.current_step_index, next_step, is_complete)
             
             if is_complete:
                 logger.info("Execution completed successfully")
-                return {
-                    "state": state.model_copy(update={
-                        "status": "completed",
-                        "phase": "completed"
-                    }),
-                    "next": "END"
-                }
+                return state.model_copy(update={"status": "completed","phase": "completed"})
             else:
                 logger.info(f"Moving to next step: {next_step}")
-                return {
-                    "state": state.model_copy(update={
-                        "current_step_index": next_step,
-                        "phase": "setup"
-                    }),
-                    "next": "prepare_step"
-                }
+                return state.model_copy(update={"current_step_index": next_step, "phase": "setup"})
         
         # Define how to route between nodes
+        def route_from_check_completion(state: ExecutionState) -> str:
+            """Route based on execution status"""
+            if state.phase == "completed":
+                return "END"
+            else:
+                return "prepare_step"
+        
         def route_from_execute(state: ExecutionState) -> str:
             """Route based on execution status"""
             if state.status == "failed":
@@ -362,6 +360,15 @@ class ScientificWorkflows:
             route_from_handle_error,
             {
                 "execute_step": "execute_step",
+                "check_completion": "check_completion"
+            }
+        )
+        
+        workflow.add_conditional_edges(
+            "check_completion",
+            route_from_check_completion,
+            {
+                "prepare_step": "prepare_step",
                 "END": END
             }
         )

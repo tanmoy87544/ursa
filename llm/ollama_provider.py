@@ -125,51 +125,87 @@ class OllamaProvider:
         
         # Should never reach here due to the exception in the loop
         return {}
-    
-    def _extract_json(self, text: str) -> dict:
+
+    def _extract_json(self, text: str):
         """
-        Extract a JSON object from text that might contain markdown or other content.
+        Extract a JSON object or array from text that might contain markdown or other content.
         
-        The function tries three approaches:
-          1. Extract JSON enclosed in a markdown code block labeled as JSON.
-          2. Extract JSON enclosed in any markdown code block.
-          3. If no code blocks are found, attempt to extract JSON by finding the first '{'
-             and the last '}' in the text.
+        The function attempts three strategies:
+          1. Extract JSON from a markdown code block labeled as JSON.
+          2. Extract JSON from any markdown code block.
+          3. Use bracket matching to extract a JSON substring starting with '{' or '['.
         
         Returns:
-            A Python dict parsed from the JSON string.
+            A Python object parsed from the JSON string (dict or list).
         
         Raises:
-            ValueError: If no valid JSON object is found.
+            ValueError: If no valid JSON is found.
         """
         # Approach 1: Look for a markdown code block specifically labeled as JSON.
-        json_block = re.search(r'```json\s*(\{.*\})\s*```', text, re.DOTALL)
-        if json_block:
-            json_str = json_block.group(1).strip()
+        labeled_block = re.search(r'```json\s*([\[{].*?[\]}])\s*```', text, re.DOTALL)
+        if labeled_block:
+            json_str = labeled_block.group(1).strip()
             try:
                 return json.loads(json_str)
             except json.JSONDecodeError:
-                # If the labeled block fails, fall through to next approaches.
+                # Fall back to the next approach if parsing fails.
                 pass
     
-        # Approach 2: Look for any code block demarcated by triple backticks.
+        # Approach 2: Look for any code block delimited by triple backticks.
         generic_block = re.search(r'```(.*?)```', text, re.DOTALL)
         if generic_block:
             json_str = generic_block.group(1).strip()
-            try:
-                return json.loads(json_str)
-            except json.JSONDecodeError:
-                pass
+            if json_str.startswith('{') or json_str.startswith('['):
+                try:
+                    return json.loads(json_str)
+                except json.JSONDecodeError:
+                    pass
     
-        # Approach 3: Look for the first occurrence of '{' and the last occurrence of '}'.
-        start = text.find('{')
-        end = text.rfind('}')
-        if start != -1 and end != -1 and start < end:
-            json_str = text[start:end+1].strip()
-            try:
-                return json.loads(json_str)
-            except json.JSONDecodeError:
-                pass
-        print("JSONLESS TEXT: ", text)
-        raise ValueError("No valid JSON object found in the provided text.")
+        # Approach 3: Attempt to extract JSON using bracket matching.
+        # Find the first occurrence of either '{' or '['.
+        first_obj = text.find('{')
+        first_arr = text.find('[')
+        if first_obj == -1 and first_arr == -1:
+            raise ValueError("No JSON object or array found in the text.")
+    
+        # Determine which bracket comes first.
+        if first_obj == -1:
+            start = first_arr
+            open_bracket = '['
+            close_bracket = ']'
+        elif first_arr == -1:
+            start = first_obj
+            open_bracket = '{'
+            close_bracket = '}'
+        else:
+            if first_obj < first_arr:
+                start = first_obj
+                open_bracket = '{'
+                close_bracket = '}'
+            else:
+                start = first_arr
+                open_bracket = '['
+                close_bracket = ']'
+        
+        # Bracket matching: find the matching closing bracket.
+        depth = 0
+        end = None
+        for i in range(start, len(text)):
+            if text[i] == open_bracket:
+                depth += 1
+            elif text[i] == close_bracket:
+                depth -= 1
+                if depth == 0:
+                    end = i
+                    break
+    
+        if end is None:
+            raise ValueError("Could not find matching closing bracket for JSON content.")
+    
+        json_str = text[start:end+1]
+        try:
+            return json.loads(json_str)
+        except json.JSONDecodeError as e:
+            raise ValueError("Extracted content is not valid JSON.") from e
+
 

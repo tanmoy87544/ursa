@@ -66,7 +66,7 @@ class ScientificAgent:
         """Load configuration from file or use defaults."""
         default_config = {
             "llm": {
-                "temperature": 0.1,
+                "temperature": 0.6,
                 "max_tokens": 4096,
                 "system_prompt": "You are a scientific problem-solving assistant that helps with research and experimentation."
             },
@@ -109,7 +109,7 @@ class ScientificAgent:
         if self.llm_provider.lower() == "ollama":
             return OllamaProvider(
                 model_name=self.model_name,
-                temperature=llm_config.get("temperature", 0.1),
+                temperature=llm_config.get("temperature", 0.6),
                 max_tokens=llm_config.get("max_tokens", 4096),
                 system_prompt=llm_config.get("system_prompt")
             )
@@ -117,7 +117,7 @@ class ScientificAgent:
             return LangChainProvider(
                 model_name=self.model_name,
                 provider="ollama",  # Using Ollama as the backend
-                temperature=llm_config.get("temperature", 0.1),
+                temperature=llm_config.get("temperature", 0.6),
                 max_tokens=llm_config.get("max_tokens", 4096),
                 system_prompt=llm_config.get("system_prompt")
             )
@@ -150,14 +150,11 @@ class ScientificAgent:
             
             #### for ii in range(100):
             # Phase 1: Problem analysis
-            print("PROBLEM STATEMENT: ", problem_statement)
             analysis_result = self._analyze_problem(problem_statement)
             
-            print("ANALYSIS RESULT: ", analysis_result)
             # Phase 2: Solution planning
             plan_result = self._create_solution_plan(analysis_result)
             
-            print("PLAN RESULT: ", plan_result)
             # Phase 3: Execute solution plan
             execution_result = self._execute_solution(plan_result)
             #### assess_done = self._assess_completeness(
@@ -173,7 +170,6 @@ class ScientificAgent:
             #### else:
             ####     print("Continuing because: ",assess_done["properties"]["Reasoning"])
             
-            print("EXECUTION RESULT: ", execution_result)
             # Phase 4: Evaluate and summarize results
             summary = self._summarize_solution(
                 problem_statement,
@@ -427,7 +423,6 @@ class ScientificAgent:
             execution_results=execution_result.get("results", {}),
             execution_status=execution_result.get("status", "unknown")
         )
-        print("ASSESSMENT: ", summary)
         
         return summary
 

@@ -25,7 +25,7 @@ class LangChainProvider:
                  model_name: str = "llama3",
                  provider: str = "ollama",
                  base_url: str = "http://localhost:11434",
-                 temperature: float = 0.1,
+                 temperature: float = 0.6,
                  max_tokens: int = 4096,
                  system_prompt: Optional[str] = None):
         """

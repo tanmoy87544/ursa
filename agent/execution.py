@@ -233,8 +233,6 @@ class Executor:
                 "outputs": {{"output_name": "output_value", ...}}
             }}
             """
-            print("DEBUG TASK PROMPT: ", task_prompt)
-            
             result = self.llm.generate_with_json_output(task_prompt, {})
             
             return {
@@ -245,7 +243,6 @@ class Executor:
             
         except Exception as e:
             logger.error(f"Error executing general step: {str(e)}")
-            # print("RESULT: ", result)
             return {
                 "status": "failed",
                 "error": str(e),
@@ -616,7 +613,7 @@ class Executor:
             Tuple of (is_complete, next_step_index)
         """
         steps = plan.get("steps", [])
-        
+
         # If no steps or current step is past the end, we're done
         if not steps or current_step_index >= len(steps) - 1:
             return True, current_step_index
@@ -678,7 +675,6 @@ class Executor:
         
         Return the code only, without any additional explanations.
         """
-        print("DEBUG CODE PROMPT: ", code_prompt)
         
         try:
             code = self.llm.generate(code_prompt)
@@ -887,7 +883,6 @@ class Executor:
         
         Format your response as a JSON object with appropriate analysis results.
         """
-        print("DEBUG ANALYSIS PROMPT: ", analysis_prompt)
         
         try:
             analysis = self.llm.generate_with_json_output(analysis_prompt, {})
@@ -958,7 +953,6 @@ class Executor:
         
         Return only the Python code without additional explanations.
         """
-        print("DEBUG VIZ PROMPT: ", viz_prompt)
         
         try:
             code = self.llm.generate(viz_prompt)

@@ -100,22 +100,23 @@ class Planner:
         """
         
         try:
-            steps_result = self.llm.generate_with_json_output(steps_prompt, {
-                "type": "array",
-                "items": {
-                    "type": "object",
-                    "properties": {
-                        "name": {"type": "string"},
-                        "description": {"type": "string"},
-                        "requires_code": {"type": "boolean"},
-                        "expected_outputs": {"type": "array", "items": {"type": "string"}},
-                        "success_criteria": {"type": "array", "items": {"type": "string"}}
-                    }
-                }
-            })
+            steps_result = self.llm.generate_with_json_output(steps_prompt)# , {
+            #     "type": "array",
+            #     "items": {
+            #         "type": "object",
+            #         "properties": {
+            #             "name": {"type": "string"},
+            #             "description": {"type": "string"},
+            #             "requires_code": {"type": "boolean"},
+            #             "expected_outputs": {"type": "array", "items": {"type": "string"}},
+            #             "success_criteria": {"type": "array", "items": {"type": "string"}}
+            #         }
+            #     }
+            # })
             
             # Add IDs if they're missing
             for i, step in enumerate(steps_result):
+                print(step)
                 if "id" not in step:
                     step["id"] = f"step_{i+1}"
                 
