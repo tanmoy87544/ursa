@@ -242,7 +242,6 @@ class ScientificWorkflows:
         # Define the nodes
         def prepare_step(state: ExecutionState) -> ExecutionState:
             """Prepare the current step for execution"""
-            print("prepare_step CURRENT STEP: ", state.current_step_index)
             logger.info(f"Preparing step {state.current_step_index + 1}/{len(state.plan['steps'])}")
             prepared_state = prepare_step_fn(state.plan, state.current_step_index, state.results)
             return state.model_copy(update={
@@ -255,7 +254,6 @@ class ScientificWorkflows:
             try:
                 logger.info(f"Executing step {state.current_step_index + 1}/{len(state.plan['steps'])}")
                 current_step = state.plan["steps"][state.current_step_index]
-                print("execute_step CURRENT STEP: ", state.current_step_index, current_step)
                 step_result = execute_step_fn(current_step, state.results)
                 
                 # Update results with this step's output
@@ -305,7 +303,6 @@ class ScientificWorkflows:
                 state.current_step_index, 
                 state.results
             )
-            print("check_completion CURRENT STEP: ", state.current_step_index, next_step, is_complete)
             
             if is_complete:
                 logger.info("Execution completed successfully")
