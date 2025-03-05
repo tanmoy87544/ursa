@@ -24,8 +24,6 @@ def main():
     """Run a simple example of the scientific agent."""
     try:
         # Define a simple problem
-        # problem = "How does temperature affect the rate of a chemical reaction?"
-        # problem = "Propose an acquisition function for multi-fidelity Bayesian optimization that allows selection across fidelities."
         problem = "Find a city with as least 10 vowels in its name."
         
         print(f"\nSolving problem: {problem}\n")
