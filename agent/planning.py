@@ -67,7 +67,8 @@ class Planner:
         You are planning a scientific investigation to solve this problem:
         {json.dumps(formalized_problem, indent=2)}
         
-        Please create a step-by-step plan to solve this scientific problem. 
+        Please create a step-by-step plan to solve this problem. 
+        Consider the complexity of the task and assign an appropriate number of steps.
         Each step should be a well-defined task that can be implemented and evaluated.
         For each step, specify:
         

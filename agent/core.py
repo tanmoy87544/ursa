@@ -15,8 +15,12 @@ from .reasoning import Reasoner
 from .planning import Planner
 from .execution import Executor
 from ..llm.ollama_provider import OllamaProvider
+from ..llm.openai_provider import OpenAIProvider
 from ..llm.langchain_provider import LangChainProvider
 from ..llm.langgraph_workflows import ScientificWorkflows, ProblemState, PlanningState, ExecutionState
+
+
+from langchain_core.runnables.graph import CurveStyle, MermaidDrawMethod, NodeStyles
 
 logger = logging.getLogger(__name__)
 
@@ -111,6 +115,13 @@ class ScientificAgent:
                 model_name=self.model_name,
                 temperature=llm_config.get("temperature", 0.6),
                 max_tokens=llm_config.get("max_tokens", 4096),
+                system_prompt=llm_config.get("system_prompt")
+            )
+        elif self.llm_provider.lower() == "openai":
+            return OpenAIProvider(
+                model_name=self.model_name,
+                temperature=llm_config.get("temperature", 0.6),
+                max_tokens=llm_config.get("max_tokens", 20000),
                 system_prompt=llm_config.get("system_prompt")
             )
         elif self.llm_provider.lower() == "langchain":
@@ -368,9 +379,10 @@ class ScientificAgent:
             handle_error_fn=self.executor.handle_error,
             check_completion_fn=self.executor.check_completion
         )
+
         
         # Get the final state from the workflow
-        final_state = execution_workflow.invoke(initial_state)
+        final_state = execution_workflow.invoke(initial_state,{"recursion_limit": 100})
         
         # Handle different return types based on LangGraph version
         try:
