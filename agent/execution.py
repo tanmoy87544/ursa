@@ -783,7 +783,7 @@ class Executor:
             
             return {
                 "output": stdout,
-                "error": stderr if stderr else None,
+                "error": stderr if stderr else stdout if "Error:" in stdout else None,
                 "execution_time": execution_time,
                 "exit_code": process.returncode,
                 "created_files": created_files
