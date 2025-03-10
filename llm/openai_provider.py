@@ -64,25 +64,40 @@ class OpenAIProvider:
             Generated text as a string
         """
         # Merge default parameters with any overrides
-        params = {
-            "model": self.model_name,
-            "prompt": prompt,
-            "temperature": kwargs.get("temperature", self.temperature),
-            "max_tokens": kwargs.get("max_tokens", self.max_tokens),
-            "stream": False
-        }
+        if any([x in self.model_name for x in ["o1","o3"]]):
+            params = {
+                "model": self.model_name,
+                "prompt": prompt,
+                "max_tokens": kwargs.get("max_tokens", self.max_tokens),
+                "stream": False
+            }
+        else:
+            params = {
+                "model": self.model_name,
+                "prompt": prompt,
+                "temperature": kwargs.get("temperature", self.temperature),
+                "max_tokens": kwargs.get("max_tokens", self.max_tokens),
+                "stream": False
+            }
         
         # Add system prompt if provided
         if self.system_prompt or kwargs.get("system_prompt"):
             prompt = kwargs.get("system_prompt", self.system_prompt) + prompt
         
         try:
-            requests = ChatOpenAI(
-                           model=self.model_name,
-                           temperature=kwargs.get("temperature", self.temperature),
-                           max_tokens=kwargs.get("max_tokens", self.max_tokens),
-                           timeout=None,
-                           max_retries=2)
+            if any([x in self.model_name for x in ["o1","o3"]]):
+                requests = ChatOpenAI(
+                               model=self.model_name,
+                               max_tokens=kwargs.get("max_tokens", self.max_tokens),
+                               timeout=None,
+                               max_retries=2)
+            else:
+                requests = ChatOpenAI(
+                               model=self.model_name,
+                               temperature=kwargs.get("temperature", self.temperature),
+                               max_tokens=kwargs.get("max_tokens", self.max_tokens),
+                               timeout=None,
+                               max_retries=2)
 
             response = requests.invoke(prompt)
             return response.content
