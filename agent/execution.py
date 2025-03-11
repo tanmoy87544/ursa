@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 class Executor:
     """Execution capabilities for scientific problem-solving."""
     
-    def __init__(self, llm, workspace_dir: str, timeout: int = 60):
+    def __init__(self, llm, workspace_dir: str, timeout: int = 600):
         """
         Initialize the executor.
         
