@@ -189,7 +189,6 @@ class ScientificAgent:
                 execution_result
             )
             
-            print("SUMMARY: ", summary)
             # Save everything to memory
             self.memory.add("analysis_result", analysis_result)
             self.memory.add("plan_result", plan_result)
