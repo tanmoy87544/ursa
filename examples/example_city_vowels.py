@@ -13,6 +13,9 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 
+import sys
+sys.path.append("../../.")
+
 # Import the ScientificAgent
 try:
     from lanl_scientific_agent.agent.core import ScientificAgent
