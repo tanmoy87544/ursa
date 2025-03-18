@@ -10,17 +10,11 @@ import yaml
 from typing import Dict, Any, List, Optional, Union, Tuple
 
 # Local imports
-from .memory import Memory
-from .reasoning import Reasoner
-from .planning import Planner
-from .execution import Executor
-from ..llm.ollama_provider import OllamaProvider
-from ..llm.openai_provider import OpenAIProvider
-from ..llm.langchain_provider import LangChainProvider
-from ..llm.langgraph_workflows import ScientificWorkflows, ProblemState, PlanningState, ExecutionState
+from .memory                      import Memory
+from langchain_ollama.chat_models import ChatOllama
+from langchain_openai             import ChatOpenAI
 
-
-from langchain_core.runnables.graph import CurveStyle, MermaidDrawMethod, NodeStyles
+from ..llm.langgraph_workflows import ScientificWorkflows
 
 logger = logging.getLogger(__name__)
 
@@ -41,8 +35,8 @@ class ScientificAgent:
             model_name: Name of the LLM model to use
             workspace_dir: Directory for storing work artifacts
         """
-        # Load configuration
-        self.config = self._load_config(config_path)
+        # # Load configuration
+        # self.config = self._load_config(config_path)
         
         # Set up workspace
         self.workspace_dir = workspace_dir or os.path.join(os.getcwd(), "workspace")
@@ -50,17 +44,12 @@ class ScientificAgent:
         
         # Initialize LLM
         self.llm_provider = llm_provider
-        self.model_name = model_name
-        self.llm = self._initialize_llm()
-        
-        # Initialize components
-        self.memory = Memory()
-        self.reasoner = Reasoner(self.llm)
-        self.planner = Planner(self.llm)
-        self.executor = Executor(self.llm, self.workspace_dir)
+        self.model_name   = model_name
+        self.llm          = self._initialize_llm()
         
         # Initialize workflows
-        self.workflows = self._initialize_workflows()
+        self.memory       = Memory()
+        self.workflows    = self._initialize_workflows()
         
         # Generate a unique ID for this agent instance
         self.agent_id = str(uuid.uuid4())
@@ -111,26 +100,18 @@ class ScientificAgent:
         llm_config = self.config.get("llm", {})
         
         if self.llm_provider.lower() == "ollama":
-            return OllamaProvider(
-                model_name=self.model_name,
-                temperature=llm_config.get("temperature", 0.6),
-                max_tokens=llm_config.get("max_tokens", 4096),
-                system_prompt=llm_config.get("system_prompt")
-            )
+            model = ChatOllama(
+                model       = self.model_name, # "llama3.1:8b",
+                max_tokens  = 10000,
+                timeout     = None,
+                max_retries = 2
+                )
         elif self.llm_provider.lower() == "openai":
-            return OpenAIProvider(
-                model_name=self.model_name,
-                temperature=llm_config.get("temperature", 0.6),
-                max_tokens=llm_config.get("max_tokens", 20000),
-                system_prompt=llm_config.get("system_prompt")
-            )
-        elif self.llm_provider.lower() == "langchain":
-            return LangChainProvider(
-                model_name=self.model_name,
-                provider="ollama",  # Using Ollama as the backend
-                temperature=llm_config.get("temperature", 0.6),
-                max_tokens=llm_config.get("max_tokens", 4096),
-                system_prompt=llm_config.get("system_prompt")
+            model = ChatOpenAI(
+                model       = self.model_name,
+                max_tokens  = 10000,
+                timeout     = None,
+                max_retries = 2
             )
         else:
             raise ValueError(f"Unsupported LLM provider: {self.llm_provider}")
@@ -159,41 +140,10 @@ class ScientificAgent:
             self.memory.add("problem_statement", problem_statement)
             self.memory.add("start_time", start_time)
             
-            #### for ii in range(100):
-            # Phase 1: Problem analysis
-            analysis_result = self._analyze_problem(problem_statement)
-            
-            # Phase 2: Solution planning
-            plan_result = self._create_solution_plan(analysis_result)
-            
-            # Phase 3: Execute solution plan
-            execution_result = self._execute_solution(plan_result)
-            #### assess_done = self._assess_completeness(
-            ####     problem_statement,
-            ####     analysis_result,
-            ####     plan_result,
-            ####     execution_result
-            #### )
-
-            #### if assess_done["properties"]["Objective Met?"]:
-            ####     break
-            ####     continue_solving = False
-            #### else:
-            ####     print("Continuing because: ",assess_done["properties"]["Reasoning"])
-            
-            # Phase 4: Evaluate and summarize results
-            summary = self._summarize_solution(
-                problem_statement,
-                analysis_result,
-                plan_result,
-                execution_result
-            )
-            
+            analysis_result = self.workflow(problem_statement)
+                        
             # Save everything to memory
             self.memory.add("analysis_result", analysis_result)
-            self.memory.add("plan_result", plan_result)
-            self.memory.add("execution_result", execution_result)
-            self.memory.add("summary", summary)
             self.memory.add("end_time", time.time())
        
             self.memory.memory_file = "memory.json"
@@ -203,10 +153,7 @@ class ScientificAgent:
             return {
                 "problem_id": problem_id,
                 "problem_statement": problem_statement,
-                "formalized_problem": analysis_result.get("formalized_problem"),
-                "solution_plan": plan_result.get("plan"),
-                "execution_results": execution_result.get("results"),
-                "summary": summary,
+                "analysis_result": analysis_result.get("formalized_problem"),
                 "duration_seconds": time.time() - start_time
             }
             
@@ -220,237 +167,3 @@ class ScientificAgent:
                 "error": str(e),
                 "duration_seconds": time.time() - start_time
             }
-
-    """
-    Update for the _analyze_problem method in ScientificAgent class.
-    Handles the case where final_state might be an AddableValuesDict instead of a ProblemState.
-    """
-    
-    def _analyze_problem(self, problem_statement: str) -> Dict[str, Any]:
-        """Analyze and formalize the problem."""
-        logger.info("Analyzing problem")
-        
-        # Create initial state for problem analysis workflow
-        initial_state = ProblemState(problem_statement=problem_statement)
-        
-        # Run the problem analysis workflow
-        problem_analysis_workflow = self.workflows.create_problem_analysis_workflow(
-            formalize_problem_fn=self.reasoner.formalize_problem,
-            identify_components_fn=self.reasoner.identify_components
-        )
-        
-        # Get the final state from the workflow
-        final_state = problem_analysis_workflow.invoke(initial_state)
-        
-        # Handle different return types based on LangGraph version
-        try:
-            # Try accessing attributes directly (older LangGraph versions)
-            return {
-                "formalized_problem": final_state.formalized_problem,
-                "variables": final_state.variables,
-                "constraints": final_state.constraints,
-                "domains": final_state.domains,
-                "approaches": final_state.approaches
-            }
-        except AttributeError:
-            # For newer LangGraph versions that return a dict-like object
-            # or when final_state doesn't have the expected attributes
-            logger.info("Using dictionary access for final state (newer LangGraph API)")
-            try:
-                # Try dictionary access
-                return {
-                    "formalized_problem": final_state.get("formalized_problem", {}),
-                    "variables": final_state.get("variables", []),
-                    "constraints": final_state.get("constraints", []),
-                    "domains": final_state.get("domains", []),
-                    "approaches": final_state.get("approaches", [])
-                }
-            except (AttributeError, TypeError):
-                # If that also fails, try converting to dict first
-                try:
-                    state_dict = dict(final_state)
-                    return {
-                        "formalized_problem": state_dict.get("formalized_problem", {}),
-                        "variables": state_dict.get("variables", []),
-                        "constraints": state_dict.get("constraints", []),
-                        "domains": state_dict.get("domains", []),
-                        "approaches": state_dict.get("approaches", [])
-                    }
-                except Exception as e:
-                    logger.error(f"Failed to extract data from workflow result: {str(e)}")
-                    # Return minimal data as fallback
-                    return {
-                        "formalized_problem": {
-                            "problem_restatement": problem_statement,
-                            "objective": "Solve the given problem",
-                            "research_questions": [],
-                            "hypotheses": [],
-                            "success_criteria": ["Provide a solution to the problem"]
-                        },
-                        "variables": [],
-                        "constraints": [],
-                        "domains": [],
-                        "approaches": []
-                    }
-
-    """
-    Update for the _create_solution_plan method in ScientificAgent class.
-    Handles the case where final_state might be an AddableValuesDict instead of a PlanningState.
-    """
-    
-    def _create_solution_plan(self, problem_analysis: Dict[str, Any]) -> Dict[str, Any]:
-        """Create a solution plan based on problem analysis."""
-        logger.info("Creating solution plan")
-        
-        # Create initial state for planning workflow
-        initial_state = PlanningState(formalized_problem=problem_analysis["formalized_problem"])
-        
-        # Run the planning workflow
-        planning_workflow = self.workflows.create_planning_workflow(
-            create_steps_fn=self.planner.create_steps,
-            analyze_dependencies_fn=self.planner.analyze_dependencies,
-            allocate_resources_fn=self.planner.allocate_resources
-        )
-        
-        # Get the final state from the workflow
-        final_state = planning_workflow.invoke(initial_state)
-        
-        # Handle different return types based on LangGraph version
-        try:
-            # Try accessing attributes directly
-            return {
-                "plan": {
-                    "steps": final_state.plan_steps,
-                    "dependencies": final_state.dependencies,
-                    "resources": final_state.resources_needed
-                }
-            }
-        except AttributeError:
-            # For newer LangGraph versions or when final_state doesn't have expected attributes
-            logger.info("Using dictionary access for final state (newer LangGraph API)")
-            try:
-                # Try dictionary access
-                return {
-                    "plan": {
-                        "steps": final_state.get("plan_steps", []),
-                        "dependencies": final_state.get("dependencies", {}),
-                        "resources": final_state.get("resources_needed", {})
-                    }
-                }
-            except (AttributeError, TypeError):
-                # If that also fails, try converting to dict first
-                try:
-                    state_dict = dict(final_state)
-                    return {
-                        "plan": {
-                            "steps": state_dict.get("plan_steps", []),
-                            "dependencies": state_dict.get("dependencies", {}),
-                            "resources": state_dict.get("resources_needed", {})
-                        }
-                    }
-                except Exception as e:
-                    logger.error(f"Failed to extract data from planning workflow result: {str(e)}")
-                    # Return minimal plan as fallback
-                    return {
-                        "plan": {
-                            "steps": [],
-                            "dependencies": {},
-                            "resources": {}
-                        }
-                    }        
-
-    """
-    Update for the _execute_solution method in ScientificAgent class.
-    Handles the case where final_state might be an AddableValuesDict instead of an ExecutionState.
-    """
-    
-    def _execute_solution(self, plan_result: Dict[str, Any]) -> Dict[str, Any]:
-        """Execute the solution plan."""
-        logger.info("Executing solution plan")
-        
-        # Create initial state for execution workflow
-        initial_state = ExecutionState(plan=plan_result["plan"])
-        
-        # Run the execution workflow
-        execution_workflow = self.workflows.create_execution_workflow(
-            prepare_step_fn=self.executor.prepare_step,
-            execute_step_fn=self.executor.execute_step,
-            handle_error_fn=self.executor.handle_error,
-            check_completion_fn=self.executor.check_completion
-        )
-
-        
-        # Get the final state from the workflow
-        final_state = execution_workflow.invoke(initial_state,{"recursion_limit": 100})
-        
-        # Handle different return types based on LangGraph version
-        try:
-            # Try accessing attributes directly
-            return {
-                "status": final_state.status,
-                "results": final_state.results,
-                "error": final_state.error
-            }
-        except AttributeError:
-            # For newer LangGraph versions or when final_state doesn't have expected attributes
-            logger.info("Using dictionary access for final state (newer LangGraph API)")
-            try:
-                # Try dictionary access
-                return {
-                    "status": final_state.get("status", "unknown"),
-                    "results": final_state.get("results", {}),
-                    "error": final_state.get("error")
-                }
-            except (AttributeError, TypeError):
-                # If that also fails, try converting to dict first
-                try:
-                    state_dict = dict(final_state)
-                    return {
-                        "status": state_dict.get("status", "unknown"),
-                        "results": state_dict.get("results", {}),
-                        "error": state_dict.get("error")
-                    }
-                except Exception as e:
-                    logger.error(f"Failed to extract data from execution workflow result: {str(e)}")
-                    # Return minimal execution result as fallback
-                    return {
-                        "status": "failed",
-                        "results": {},
-                        "error": f"Failed to extract execution results: {str(e)}"
-                    }    
-    
-    def _assess_completeness(self, 
-                           problem_statement: str,
-                           analysis_result: Dict[str, Any],
-                           plan_result: Dict[str, Any],
-                           execution_result: Dict[str, Any]) -> Dict[str, Any]:
-        """Create a comprehensive summary of the solution."""
-        logger.info("Assessing completeness")
-        
-        summary = self.reasoner.assess_completeness(
-            problem_statement=problem_statement,
-            formalized_problem=analysis_result.get("formalized_problem", {}),
-            solution_plan=plan_result.get("plan", {}),
-            execution_results=execution_result.get("results", {}),
-            execution_status=execution_result.get("status", "unknown")
-        )
-        
-        return summary
-
-    def _summarize_solution(self, 
-                           problem_statement: str,
-                           analysis_result: Dict[str, Any],
-                           plan_result: Dict[str, Any],
-                           execution_result: Dict[str, Any]) -> Dict[str, Any]:
-        """Create a comprehensive summary of the solution."""
-        logger.info("Summarizing solution")
-        
-        summary = self.reasoner.generate_summary(
-            problem_statement=problem_statement,
-            formalized_problem=analysis_result.get("formalized_problem", {}),
-            solution_plan=plan_result.get("plan", {}),
-            execution_results=execution_result.get("results", {}),
-            execution_status=execution_result.get("status", "unknown")
-        )
-        
-        return summary
