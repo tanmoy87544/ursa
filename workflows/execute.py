@@ -10,7 +10,7 @@ from langgraph.prebuilt      import ToolNode
 
 from langchain_openai        import ChatOpenAI
 from langgraph.graph         import END, StateGraph, START
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
 
 from langchain_ollama.chat_models   import ChatOllama
 from langchain_community.tools      import DuckDuckGoSearchResults
@@ -44,12 +44,7 @@ def should_continue(state: State) -> Literal["summarize", "continue"]:
 # Define the function that calls the model
 def call_model(state: State):
     messages = state["messages"]
-    print("$"*50)
-    for mess in messages:
-        print(mess)
-    print("$"*50)
     response = model.invoke(messages)
-    print("Model Response: ", response.content)
     # We return a list, because this will get added to the existing list
     return {"messages": [response]}
 
@@ -62,26 +57,21 @@ points.
 '''
 # Define the function that calls the model
 def call_summarize(state: State):
-    messages = state["messages"] + [summarize_prompt]
-    print(messages)
+        
+    messages = [SystemMessage(content=summarize_prompt)] + state["messages"]
     response = model.invoke(messages)
-    print("#"*50)
-    print("#"*50)
-    print("SUMMARY: ", response.content)
     # We return a list, because this will get added to the existing list
     return {"messages": [response.content]}
 
 
 
 @tool
-def run_cmd(query: str):
+def run_cmd(query: str) -> str:
     """Run command from commandline"""
     safety_check = model.invoke("Assume commands to run python are safe because the files are from a trusted source. Answer only either [YES] or [NO]. Is this command safe to run: " + query)
     if "[NO]" in safety_check.content:
         print("[WARNING]")
-        print("[WARNING]")
         print("[WARNING] That command deemed unsafe and cannot be run: ", query, " --- ",safety_check)
-        print("[WARNING]")
         print("[WARNING]")
         return ["[WARNING] That command deemed unsafe and cannot be run."]
     
@@ -132,12 +122,12 @@ def write_python(code: str, filename: str):
             f.write(code)
         print(f"Written code to file: {code_file}")
         
-        return f"File {code_file} written successfully."
+        return f"File {filename} written successfully."
         
     except Exception as e:
         print(f"Error generating code: {str(e)}")
         # Return minimal code that prints the error
-        return f"Failed to write {code_file} successfully."
+        return f"Failed to write {filename} successfully."
 
 #  search_tool = DuckDuckGoSearchResults(output_format="json", num_results=10)
 search_tool = TavilySearchResults(max_results=10, search_depth="advanced",include_answer=True)
@@ -201,7 +191,7 @@ def main():
     # inputs = {"messages": [HumanMessage(content="what is the weather in New Mexico?")]}
     inputs = {"messages": [HumanMessage(content=problem_string)]}
     result = app.invoke(inputs)
-    print(result)
+    print(result["messages"][-1].content)
     return result
 
 if __name__ == "__main__":

@@ -114,8 +114,8 @@ class AgentState(TypedDict):
 llm = ChatOpenAI(model=llm_model)
 
 # Setup search tool
-# search_tool = DuckDuckGoSearchResults(output_format="json", num_results=10)
-search_tool = TavilySearchResults(max_results=10, search_depth="advanced",include_answer=True)
+search_tool = DuckDuckGoSearchResults(output_format="json", num_results=10)
+# search_tool = TavilySearchResults(max_results=10, search_depth="advanced",include_answer=False)
 
 def agent1_generate_solution(state: AgentState) -> AgentState:
     """Agent 1: Hypothesizer."""

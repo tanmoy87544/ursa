@@ -125,6 +125,7 @@ class PlanningState(TypedDict):
     messages: Annotated[list, add_messages]
     plan_steps: List[Dict[str, Any]] = Field(
         default_factory=list, description="Ordered steps in the solution plan")
+    reflection_steps: int =  Field(default=3, description="Number of reflection steps")
     
 def generation_node(state: PlanningState) -> PlanningState:
     return {"messages": [generate.invoke(state["messages"])]}
@@ -157,7 +158,7 @@ def reflection_node(state: PlanningState) -> PlanningState:
     return {"messages": [HumanMessage(content=res.content)]}
 
 def should_continue(state: PlanningState):
-    if len(state["messages"]) > 6:
+    if len(state["messages"]) > (state["reflection_steps"]+3):
         # End after 3 iterations
         return "formalize"
     return "reflect"

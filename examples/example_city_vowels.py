@@ -33,8 +33,10 @@ def main():
         
         # Initialize the agent
         agent = ScientificAgent(
-            llm_provider="ollama",
-            model_name="phi4",
+            llm_provider="openai",
+            model_name="gpt-4o",
+            # llm_provider="ollama",
+            # model_name="phi4",
             workspace_dir="./workspace"
         )
         

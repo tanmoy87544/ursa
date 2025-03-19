@@ -3,10 +3,10 @@ from langchain_openai             import ChatOpenAI
 from langchain_core.messages      import HumanMessage
 
 
-from reflection import PlanningState
-from reflection import graph as planning_graph
-from execute    import app   as execution_graph
-from policy_strategizer import build_agent_graph, AgentState
+from reflection   import PlanningState
+from reflection   import graph as planning_graph
+from execute      import app   as execution_graph
+from agent_debate import build_agent_graph, AgentState
 
 
 agent_graph = build_agent_graph()

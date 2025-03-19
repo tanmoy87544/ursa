@@ -67,4 +67,4 @@ Write and execute a python file to:
   - Assess the quality of fit by r-squared on the test set and iterate if the current model is not good enough.
 '''
 
-final_result = app.invoke({"messages": [HumanMessage( content=problem_string),],})
+final_result = app.invoke({"messages": [HumanMessage( content=problem_string),],"reflection_steps":3})
