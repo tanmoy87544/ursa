@@ -26,40 +26,6 @@ RED = "\033[91m"
 RESET = "\033[0m"
 
 
-# the real question of interest
-country = 'USA'
-# question = dedent("""\
-#     In the current political environment, how would China try to win the European NATO countries over to
-#     its side, and how over what timescale would this happen?
-# """)
-
-# question = dedent("""\
-#     What are some common diplomatic, economic, and cultural strategies that a major power (e.g., China)
-#     might use to improve or deepen relationships with European NATO countries? Over what timeframe might
-#     such strategies have an impact, historically or theoretically?
-# """)
-
-# question = dedent("""\
-#     In a contemporary geopolitical context, what are some typical mechanisms or strategies that China could 
-#     theoretically use to foster closer relations with European NATO countries? Based on historical examples, 
-#     over what rough timescales might those strategies show results?
-# """)
-
-# a silly canada tariffs one
-# country = 'Canada'
-# question = dedent(f"""\
-#     In light of the current trade tensions and tariffs between the United States and {country}, what strategies
-#     could the U.S. employ to strengthen its economic position and achieve a favorable outcome?
-# """)
-
-
-
-question= dedent(f"""\
-    Given the current advancements in AI in the tech industry, where should a scientific research laboratory like
-    Los Alamos national laboratory do to position itself on the cutting edge of AI for science?
-""")
-
-
 hypothesizer_system_message = dedent("""\
     You are Agent 1, a creative solution hypothesizer for a posed question.  
     If this is not the first iteration, you must explicitly call out how you updated
@@ -70,24 +36,6 @@ critic_system_message = dedent("""\
     You are Agent 2, a rigorous Critic who identifies flaws and areas for improvement.
 """)
 
-# competitor_system_message = dedent("""\
-#     You are Agent 3, a direct competitor to Agent 1.  Acting as that competitor, and taking
-#     into account potential critiques from the critic, provide an honest assessment how you
-#     might *REALLY* counter the approach of Agent 1.
-# """)
-
-# competitor_system_message = dedent(f"""\
-#     You are Agent 3, taking on the role of {country} in this hypothetical situation, a direct competitor to Agent 1.
-#     Acting as that competitor, and taking into account potential critiques from the critic, provide an honest
-#     assessment how you might *REALLY* counter the approach of Agent 1.
-# """)
-
-# competitor_system_message = dedent(f"""\
-#     You are Agent 3, an objective geopolitical analyst, explaining how a major power like China might approach 
-#     building or strengthening ties with European NATO member states. Your response should consider historical 
-#     precedents, diplomatic tools, economic incentives, and long-term timelines. It must take into account
-#     the proposed approaches of presented as well as the critique by the neutral agent.
-# """)
 
 competitor_system_message = dedent(f"""\
     You are Agent 3, taking on the role of a direct competitor to Agent 1 in this hypothetical situation.
