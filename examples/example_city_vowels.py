@@ -1,71 +1,46 @@
-"""
-A minimal example script to test the ScientificAgent with error handling.
-"""
-
-import os
-import sys
-import logging
-from typing import Dict, Any
-
-# Set up logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-
 import sys
 sys.path.append("../../.")
 
-# Import the ScientificAgent
-try:
-    from lanl_scientific_agent.agent.core import ScientificAgent
-except ImportError as e:
-    print(f"Error importing ScientificAgent: {e}")
-    sys.exit(1)
+from lanl_scientific_agent.agent.execution_agent import ExecutionAgent
+from lanl_scientific_agent.agent.planning_agent  import PlanningAgent
+from langchain_core.messages                     import HumanMessage
+from langchain_openai                            import ChatOpenAI
+from langchain_ollama.chat_models                import ChatOllama
 
 def main():
-    """Run a simple example of the scientific agent."""
+    """Run a simple example of an agent."""
     try:
         # Define a simple problem
         problem = "Find a city with as least 10 vowels in its name."
+        model = ChatOpenAI(
+            model       = "o3-mini",
+            max_tokens  = 10000,
+            timeout     = None,
+            max_retries = 2)
+        # model = ChatOllama(
+        #     model       = "llama3.1:8b",
+        #     max_tokens  = 4000,
+        #     timeout     = None,
+        #     max_retries = 2
+        # )
+        
+        init = {"messages": [HumanMessage(content=problem)]}
         
         print(f"\nSolving problem: {problem}\n")
         
         # Initialize the agent
-        agent = ScientificAgent(
-            llm_provider="openai",
-            model_name="gpt-4o",
-            # llm_provider="ollama",
-            # model_name="phi4",
-            workspace_dir="./workspace"
-        )
+        planner  = PlanningAgent(llm=model)
+        executor = ExecutionAgent(llm=model)
         
         # Solve the problem
-        result = agent.solve(problem)
-        
-        # Print some basic results
-        print("\n" + "="*80)
-        print("SOLUTION RESULTS")
-        print("="*80)
-        
-        print(f"\nStatus: {result.get('status', 'N/A')}")
-        print(f"Duration: {result.get('duration_seconds', 0):.2f} seconds")
-        
-        # Check if we have a summary
-        if "summary" in result and result["summary"]:
-            summary = result["summary"]
-            
-            print("\nPROBLEM OVERVIEW:")
-            print(summary.get("problem_overview", "Not available"))
-            
-            print("\nKEY FINDINGS:")
-            for finding in summary.get("key_findings", ["Not available"]):
-                print(f"- {finding}")
-        else:
-            print("\nNo summary available in results.")
-            print("Available keys in result:", ", ".join(result.keys()))
-        
-        return result
+        planning_output = planner.action.invoke(init)
+        print(planning_output["messages"][-1].content)
+        final_results   = executor.action.invoke(planning_output)
+        for x in final_results["messages"]:
+            print(x.content)
+        # print(final_results["messages"][-1].content)
+                
+        return final_results["messages"][-1].content
     
     except Exception as e:
         print(f"Error in example: {str(e)}")
