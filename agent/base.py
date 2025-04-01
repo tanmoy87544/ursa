@@ -5,7 +5,7 @@ from langchain_ollama.chat_models import ChatOllama
 class BaseAgent:
     def __init__(self, llm, *args, **kwargs):
         if type(llm) == str:
-            self.llm_provider, self.llm_model = llm.split(":")
+            self.llm_provider, self.llm_model = llm.split("/")
             if self.llm_provider.lower() == "openai":
                 self.llm = ChatOpenAI(
                     model       = self.llm_model,

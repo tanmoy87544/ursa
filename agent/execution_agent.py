@@ -24,7 +24,7 @@ class ExecutionState(TypedDict):
     messages: Annotated[list, add_messages]
 
 class ExecutionAgent(BaseAgent):
-    def __init__(self, llm = "OpenAI:gpt-4o", *args, **kwargs):
+    def __init__(self, llm = "OpenAI/gpt-4o", *args, **kwargs):
         super().__init__(llm, args, kwargs)
         self.executor_prompt  = executor_prompt
         self.summarize_prompt = summarize_prompt
@@ -65,18 +65,18 @@ class ExecutionAgent(BaseAgent):
         return state
 
     def _initialize_agent(self):
-        self.workflow = StateGraph(ExecutionState)
+        self.graph = StateGraph(ExecutionState)
 
-        self.workflow.add_node("agent",       self.query_executor)
-        self.workflow.add_node("action",           self.tool_node)
-        self.workflow.add_node("summarize",        self.summarize)
-        self.workflow.add_node("safety_check",  self.safety_check)
+        self.graph.add_node("agent",       self.query_executor)
+        self.graph.add_node("action",           self.tool_node)
+        self.graph.add_node("summarize",        self.summarize)
+        self.graph.add_node("safety_check",  self.safety_check)
 
         # Set the entrypoint as `agent`
         # This means that this node is the first one called
-        self.workflow.add_edge(START, "agent")
+        self.graph.add_edge(START, "agent")
 
-        self.workflow.add_conditional_edges(
+        self.graph.add_conditional_edges(
             "agent",
             should_continue,
             {
@@ -85,7 +85,7 @@ class ExecutionAgent(BaseAgent):
             },
         )
 
-        self.workflow.add_conditional_edges(
+        self.graph.add_conditional_edges(
             "safety_check",
             command_safe,
             {
@@ -94,10 +94,10 @@ class ExecutionAgent(BaseAgent):
             },
         )
 
-        self.workflow.add_edge("action",    "agent")
-        self.workflow.add_edge("summarize",     END)
+        self.graph.add_edge("action",    "agent")
+        self.graph.add_edge("summarize",     END)
 
-        self.action = self.workflow.compile()
+        self.action = self.graph.compile()
 
 @tool
 def run_cmd(query: str) -> str:

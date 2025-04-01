@@ -18,7 +18,7 @@ class PlanningState(TypedDict):
     reflection_steps: Optional[int] =  Field(default=3, description="Number of reflection steps")
 
 class PlanningAgent(BaseAgent):
-    def __init__(self, llm = "OpenAI:gpt-4o", *args, **kwargs):
+    def __init__(self, llm = "OpenAI/gpt-4o", *args, **kwargs):
         super().__init__(llm, args, kwargs)
         self.planner_prompt    = planner_prompt
         self.formalize_prompt  = formalize_prompt

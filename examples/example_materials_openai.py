@@ -18,6 +18,8 @@ Hypothesize some metal combinations that may lead to useful alloys and identify 
 Your only tool for identifying the materials is through writing python code. You cannot perform any materials synthesis or experimental testing.
 
 In the end we should have a list of high-entropy alloys that are not brittle at low temperature and a justification for this.
+
+No hypothetical examples, perform the actual analysis and get come to a defensible conclusion. 
 '''
 
 

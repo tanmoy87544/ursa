@@ -24,7 +24,7 @@ class ResearchState(TypedDict):
     max_research_steps: Optional[int] =  Field(default=100, description="Maximum number of research steps")
 
 class ResearchAgent(BaseAgent):
-    def __init__(self, llm = "OpenAI:gpt-4o", *args, **kwargs):
+    def __init__(self, llm = "OpenAI/gpt-4o", *args, **kwargs):
         super().__init__(llm, args, kwargs)
         self.research_prompt    = research_prompt
         self.reflection_prompt  = reflection_prompt
@@ -43,17 +43,17 @@ class ResearchAgent(BaseAgent):
         return {"messages": [messages[-2]]}
 
     def _initialize_agent(self):
-        self.workflow = StateGraph(ResearchState)
-        self.workflow.add_node("research", create_react_agent(self.llm, self.tools, prompt=self.research_prompt))
+        self.graph = StateGraph(ResearchState)
+        self.graph.add_node("research", create_react_agent(self.llm, self.tools, prompt=self.research_prompt))
 
-        self.workflow.add_node("review",     self.review_node)
-        self.workflow.add_node("response", self.response_node)
+        self.graph.add_node("review",     self.review_node)
+        self.graph.add_node("response", self.response_node)
 
-        self.workflow.add_edge(START,       "research")
-        self.workflow.add_edge("research",    "review")
-        self.workflow.add_edge("response",         END)
+        self.graph.add_edge(START,       "research")
+        self.graph.add_edge("research",    "review")
+        self.graph.add_edge("response",         END)
 
-        self.workflow.add_conditional_edges(
+        self.graph.add_conditional_edges(
             "review", 
             should_continue,
             {
@@ -61,7 +61,7 @@ class ResearchAgent(BaseAgent):
                 "response":"response"
             }
         )
-        self.action = self.workflow.compile()
+        self.action = self.graph.compile()
 
 
 
