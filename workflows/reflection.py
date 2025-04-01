@@ -13,7 +13,7 @@ from langgraph.graph.message      import add_messages
 from langgraph.checkpoint.memory  import MemorySaver
 from typing_extensions            import TypedDict
 
-from typing   import Annotated, List, Sequence, Dict, Any
+from typing   import Annotated, List, Literal, Dict, Any, Optional
 from pydantic import BaseModel, Field
 
 from langchain_community.tools import TavilySearchResults
@@ -23,8 +23,10 @@ search = TavilySearchResults(
     search_depth="advanced",
     include_answer=True)
 
-from parse import extract_json
-import asyncio
+try:
+    from parse import extract_json
+except:
+    from .parse import extract_json
 
 # llm = ChatOllama(
 #     model       = "gemma3:12b",
@@ -35,13 +37,13 @@ import asyncio
 # )
 
 llm = ChatOpenAI(
-    model       = "o3-mini",
-    max_tokens  = 10000,
+    model       = "gpt-4o",
+    max_tokens  = 16000,
     timeout     = None,
     max_retries = 2
 )
 
-# llm.bind_tools([search])
+llm.bind_tools([search])
 
 prompt = ChatPromptTemplate.from_messages(
     [
@@ -103,9 +105,13 @@ reflection_prompt = ChatPromptTemplate.from_messages(
     [
         (
             "system",
-            "You are a critical reviewer being given a series of steps to solve a problem."
-            "Provide detailed recommendations, including missing or superfluous steps. In the end, decide if the current proposal should be approved or revised."
-            "Ensure the proposed effort is appropriate for the problem.",
+            ''''
+            You are a critical reviewer being given a series of steps to solve a problem.
+            Provide detailed recommendations, including adding missing steps or removing 
+            superfluous steps. Ensure the proposed effort is appropriate for the problem.
+            In the end, decide if the current proposal should be approved or revised. 
+            Include [APPROVED] in your response if the proposal should be approved.
+            ''',
         ),
         MessagesPlaceholder(variable_name="messages"),
     ]
@@ -125,12 +131,14 @@ class PlanningState(TypedDict):
     messages: Annotated[list, add_messages]
     plan_steps: List[Dict[str, Any]] = Field(
         default_factory=list, description="Ordered steps in the solution plan")
-    reflection_steps: int =  Field(default=3, description="Number of reflection steps")
+    reflection_steps: Optional[int] =  Field(default=3, description="Number of reflection steps")
     
 def generation_node(state: PlanningState) -> PlanningState:
+    print(state)
     return {"messages": [generate.invoke(state["messages"])]}
 
 def formalize_node(state: PlanningState) -> PlanningState:
+    print(state)
     cls_map = {"ai": HumanMessage, "human": AIMessage}
     # First message is the original user request. We hold it the same for all nodes
     translated = [state["messages"][0]] + [
@@ -148,6 +156,7 @@ def formalize_node(state: PlanningState) -> PlanningState:
     return {"messages": [HumanMessage(content=res.content)], "plan_steps": json_out}    
 
 def reflection_node(state: PlanningState) -> PlanningState:
+    print(state)
     cls_map = {"ai": HumanMessage, "human": AIMessage}
     # First message is the original user request. We hold it the same for all nodes
     translated = [state["messages"][0]] + [
@@ -158,22 +167,35 @@ def reflection_node(state: PlanningState) -> PlanningState:
     return {"messages": [HumanMessage(content=res.content)]}
 
 def should_continue(state: PlanningState):
-    if len(state["messages"]) > (state["reflection_steps"]+3):
+    if len(state["messages"]) > (state.get("reflection_steps",3)+3):
         # End after 3 iterations
         return "formalize"
-    return "reflect"
+    if "[APPROVED]" in state["messages"][-1].content:
+        return "formalize"
+    return "generate"
 
-# tools       = [search]
-# search_node = ToolNode(tools)
+def should_search(state: PlanningState) -> Literal["search", "reflect"]:
+    messages = state["messages"]
+    last_message = messages[-1]
+    # If there is no tool call, then we should reflect
+    if not last_message.tool_calls:
+        return "reflect"
+    # Otherwise if there is, we continue
+    else:
+        return "search"
+
+tools       = [search]
+search_node = ToolNode(tools)
 
 builder = StateGraph(PlanningState)
 builder.add_node("generate", generation_node)
-# builder.add_node("search",       search_node)
+builder.add_node("search",       search_node)
 builder.add_node("reflect",  reflection_node)
 builder.add_node("formalize", formalize_node)
 
 builder.add_edge(START,       "generate")
-builder.add_edge("reflect",   "generate")
+builder.add_edge("generate",   "reflect")
+# builder.add_edge("search",    "generate")
 builder.add_edge("formalize",        END)
 
 # builder.add_conditional_edges(
@@ -186,10 +208,10 @@ builder.add_edge("formalize",        END)
 # )
 
 builder.add_conditional_edges(
-    "generate", 
+    "reflect", 
     should_continue,
     {
-        "reflect":"reflect",
+        "generate":"generate",
         "formalize":"formalize"
     }
     )

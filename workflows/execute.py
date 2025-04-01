@@ -40,10 +40,20 @@ def should_continue(state: State) -> Literal["summarize", "continue"]:
     else:
         return "continue"
 
-
+callmodel_prompt = '''
+You are a plan execution agent. You will be given a plan to solve a problem.
+Use the tools available to carry out this plan.
+You may perform an internet search if you need information on how to carry out a solution.
+You may write code to solve the problem.
+You may execute system commands to carry out this plan, as long as they are safe commands.
+'''
 # Define the function that calls the model
 def call_model(state: State):
     messages = state["messages"]
+    if type(state["messages"][0]) == SystemMessage:
+        state["messages"][0] = SystemMessage(content=callmodel_prompt)
+    else:
+        state["messages"] = [SystemMessage(content=callmodel_prompt)] + state["messages"]
     response = model.invoke(messages)
     # We return a list, because this will get added to the existing list
     return {"messages": [response]}
@@ -68,7 +78,7 @@ def call_summarize(state: State):
 @tool
 def run_cmd(query: str) -> str:
     """Run command from commandline"""
-    safety_check = model.invoke("Assume commands to run python are safe because the files are from a trusted source. Answer only either [YES] or [NO]. Is this command safe to run: " + query)
+    safety_check = model.invoke("Assume commands to run python and Julia are safe because the files are from a trusted source. Answer only either [YES] or [NO]. Is this command safe to run: " + query)
     if "[NO]" in safety_check.content:
         print("[WARNING]")
         print("[WARNING] That command deemed unsafe and cannot be run: ", query, " --- ",safety_check)
@@ -92,13 +102,13 @@ def run_cmd(query: str) -> str:
     return f"STDOUT: {stdout} and STDERR: {stderr}"
 
 @tool
-def write_python(code: str, filename: str):
+def write_code(code: str, filename: str):
     """
-    Writes python code to a file in the given workspace.
+    Writes python or Julia code to a file in the given workspace as requested.
     
     Args:
-        code: The python code to write
-        filename: the filename with a .py extension for the file name
+        code: The code to write
+        filename: the filename with an appropriate extension for programming language (.py for python, .jl for Julia, etc.)
         
     Returns:
         Execution results
@@ -132,12 +142,12 @@ def write_python(code: str, filename: str):
 #  search_tool = DuckDuckGoSearchResults(output_format="json", num_results=10)
 search_tool = TavilySearchResults(max_results=10, search_depth="advanced",include_answer=True)
 
-tools     = [run_cmd, write_python, search_tool]
+tools     = [run_cmd, write_code, search_tool]
 tool_node = ToolNode(tools)
 
 model = ChatOpenAI(
     model       = "o1",
-    max_tokens  = 10000,
+    max_tokens  = 50000,
     timeout     = None,
     max_retries = 2
 )

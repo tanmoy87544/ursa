@@ -38,7 +38,7 @@ def run_execution_graph(state:PlanningState) -> PlanningState:
     state["messages"].append(HumanMessage( content="Use search, write code, and execute code to carry out this plan."))
     res = execution_graph.invoke(state,config)
     print("#"*30)
-    print(res.content)
+    print(res["messages"][-1].content)
     print("$"*30)
     return res
 
@@ -56,15 +56,14 @@ workflow.add_edge("action", END)
 
 app = workflow.compile()
 
-problem_string = "Find a city with as least 10 vowels in its name."
-# problem_string = '''
-# Look for a file called finished_cases.csv in your workspace. If you find it, it should contain a column named something like "log Yield".
+# problem_string = "Find a city with as least 10 vowels in its name."
+problem_string = '''
+You have access to the pybaseball package for downloading baseball data and the numpyro package for Bayesian inference in python.
 
-# Write and execute a python file to:
-#   - Load that data into python.
-#   - Split the data into a training and test set.
-#   - Fit a Gaussian process model with gpytorch to the training data where "log Yield" is the output and the other variables are inputs.
-#   - Assess the quality of fit by r-squared on the test set and iterate if the current model is not good enough.
-# '''
+Write a python file to:
+  - Download data on batters from 2021-2024
+  - Build infer a partially pooled Bayesian hierarchical model for to estimate home run park factors
+  - Visualize the posterior distribitons and summarize results
+'''
 
-final_result = app.invoke({"messages": [HumanMessage( content=problem_string),],"reflection_steps":3})
+final_result = app.invoke({"messages": [HumanMessage( content=problem_string),],})

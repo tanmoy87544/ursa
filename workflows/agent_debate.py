@@ -17,7 +17,7 @@ import os
 from datetime import datetime
 
 # llm_model = 'gpt-4o-mini'
-llm_model = 'o3-mini'
+llm_model = 'o1'
 
 # --- ANSI color codes ---
 GREEN = "\033[92m"
@@ -62,8 +62,8 @@ class AgentState(TypedDict):
 llm = ChatOpenAI(model=llm_model)
 
 # Setup search tool
-search_tool = DuckDuckGoSearchResults(output_format="json", num_results=10)
-# search_tool = TavilySearchResults(max_results=10, search_depth="advanced",include_answer=False)
+# search_tool = DuckDuckGoSearchResults(output_format="json", num_results=10)
+search_tool = TavilySearchResults(max_results=10, search_depth="advanced",include_answer=False)
 
 def agent1_generate_solution(state: AgentState) -> AgentState:
     """Agent 1: Hypothesizer."""
@@ -104,7 +104,7 @@ def agent1_generate_solution(state: AgentState) -> AgentState:
                 new_state["visited_sites"].append(link)
     except (ValueError, SyntaxError, TypeError):
         # If it's not valid Python syntax or something else goes wrong
-        print("[DEBUG] Could not parse DuckDuckGo results as Python list.")
+        print("[DEBUG] Could not parse search results as Python list.")
         print("[DEBUG] raw_search_results:", raw_search_results)
 
     user_content += f"\nSearch results: {raw_search_results}"
@@ -156,7 +156,7 @@ def agent2_critique(state: AgentState) -> AgentState:
                 new_state["visited_sites"].append(link)
     except (ValueError, SyntaxError, TypeError):
         # If it's not valid Python syntax or something else goes wrong
-        print("[DEBUG] Could not parse DuckDuckGo results as Python list.")
+        print("[DEBUG] Could not parse search results as Python list.")
         print("[DEBUG] raw_search_results:", raw_search_results)
 
     fact_check_results = raw_search_results
@@ -211,7 +211,7 @@ def agent3_competitor_perspective(state: AgentState) -> AgentState:
                 new_state["visited_sites"].append(link)
     except (ValueError, SyntaxError, TypeError):
         # If it's not valid Python syntax or something else goes wrong
-        print("[DEBUG] Could not parse DuckDuckGo results as Python list.")
+        print("[DEBUG] Could not parse search results as Python list.")
         print("[DEBUG] raw_search_results:", raw_search_results)
 
     competitor_info = raw_search_results
@@ -503,6 +503,8 @@ if __name__ == "__main__":
     agent_graph = build_agent_graph()
 
     max_iterations = 3
+
+    question = "Find a city with as least 10 vowels in its name."
 
     # Initialize the state
     initial_state = AgentState(
