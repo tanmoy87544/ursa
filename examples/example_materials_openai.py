@@ -1,11 +1,10 @@
 import sys
 sys.path.append("../../.")
 
-from lanl_scientific_agent.agent.execution_agent import ExecutionAgent
-from lanl_scientific_agent.agent.planning_agent  import PlanningAgent
-from langchain_core.messages                     import HumanMessage
-from langchain_openai                            import ChatOpenAI
-from langchain_ollama.chat_models                import ChatOllama
+from lanl_scientific_agent.agents import ExecutionAgent, PlanningAgent
+from langchain_core.messages      import HumanMessage
+from langchain_openai             import ChatOpenAI
+from langchain_ollama.chat_models import ChatOllama
 
 
 problem_definition = '''

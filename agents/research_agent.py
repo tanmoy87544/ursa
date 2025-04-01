@@ -20,7 +20,7 @@ from ..prompt_library.research_prompts import research_prompt, reflection_prompt
 
 class ResearchState(TypedDict):
     messages: Annotated[list, add_messages]
-    urls_visited: List[str]
+    urls_visited: Optional[List[str]]
     max_research_steps: Optional[int] =  Field(default=100, description="Maximum number of research steps")
 
 class ResearchAgent(BaseAgent):

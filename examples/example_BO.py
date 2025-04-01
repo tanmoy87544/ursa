@@ -1,7 +1,7 @@
 import sys
 sys.path.append("../../.")
 
-from lanl_scientific_agent.agents import ExecutionAgent, PlanningAgent
+from lanl_scientific_agent.agents import ExecutionAgent
 from langchain_core.messages      import HumanMessage
 from langchain_openai             import ChatOpenAI
 from langchain_ollama.chat_models import ChatOllama
@@ -10,10 +10,16 @@ def main():
     """Run a simple example of an agent."""
     try:
         # Define a simple problem
-        problem = "Find a city with as least 10 vowels in its name."
+        problem = """ 
+        "Optimize the six-hump camel function. 
+            Start by evaluating that function at 10 locations.
+            Then utilize Bayesian optimization to build a surrogate model 
+                and sequentially select points until the function is optimized. 
+            Carry out the optimization and report the results.
+        """
         model = ChatOpenAI(
             model       = "o3-mini",
-            max_tokens  = 10000,
+            max_tokens  = 50000,
             timeout     = None,
             max_retries = 2)
         # model = ChatOllama(
@@ -28,17 +34,13 @@ def main():
         print(f"\nSolving problem: {problem}\n")
         
         # Initialize the agent
-        planner  = PlanningAgent(llm=model)
         executor = ExecutionAgent(llm=model)
         
         # Solve the problem
-        planning_output = planner.action.invoke(init)
-        print(planning_output["messages"][-1].content)
-        final_results   = executor.action.invoke(planning_output)
+        final_results   = executor.action.invoke(init)
         for x in final_results["messages"]:
             print(x.content)
-        # print(final_results["messages"][-1].content)
-                
+              
         return final_results["messages"][-1].content
     
     except Exception as e:
