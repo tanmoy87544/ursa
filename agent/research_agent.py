@@ -78,8 +78,8 @@ def process_content(url: str) -> str:
     soup     = BeautifulSoup(response.content, 'html.parser')
     return soup.get_text()
 
-# search_tool = DuckDuckGoSearchResults(output_format="json", num_results=10)
-search_tool = TavilySearchResults(max_results=10, search_depth="advanced",include_answer=True)
+search_tool = DuckDuckGoSearchResults(output_format="json", num_results=10)
+# search_tool = TavilySearchResults(max_results=10, search_depth="advanced",include_answer=True)
 
 # tool_node = ToolNode(tools)
 # llm.bind_tools(tools)

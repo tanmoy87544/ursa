@@ -157,8 +157,8 @@ def write_code(code: str, filename: str):
         # Return minimal code that prints the error
         return f"Failed to write {filename} successfully."
 
-#  search_tool = DuckDuckGoSearchResults(output_format="json", num_results=10)
-search_tool = TavilySearchResults(max_results=10, search_depth="advanced", include_answer=True)
+search_tool = DuckDuckGoSearchResults(output_format="json", num_results=10)
+# search_tool = TavilySearchResults(max_results=10, search_depth="advanced", include_answer=True)
 
 # Define the function that determines whether to continue or not
 def should_continue(state: ExecutionState) -> Literal["summarize", "continue"]:
