@@ -205,7 +205,7 @@ class HypothesizerAgent(BaseAgent):
         print(f"[iteration {state['current_iteration']} - DEBUG] Exiting agent3_competitor_perspective.")
         return new_state
     
-    def increment_iteration(state: HypothesizerState) -> HypothesizerState:
+    def increment_iteration(self, state: HypothesizerState) -> HypothesizerState:
         new_state = state.copy()
         new_state["current_iteration"] += 1
         print(f"[iteration {state['current_iteration']} - DEBUG] Iteration incremented to {new_state['current_iteration']}")
@@ -465,7 +465,7 @@ def should_continue(state: HypothesizerState) -> Literal["continue", "finish"]:
 
 if __name__ == "__main__":
     # Create the graph
-    planning_agent = HypothesizerAgent()
+    hypothesizer_agent = HypothesizerAgent()
 
     question = "Find a city with as least 10 vowels in its name."
 
@@ -482,7 +482,7 @@ if __name__ == "__main__":
 
     print("[DEBUG] Invoking the graph...")
     # Run the graph
-    result = planning_agent.action.invoke(initial_state, {"recursion_limit": 999999})
+    result = hypothesizer_agent.action.invoke(initial_state, {"recursion_limit": 999999})
     summary_text = result["summary_report"]
 
     print("[DEBUG] Graph invocation complete.")
