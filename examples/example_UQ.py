@@ -21,7 +21,7 @@ def main():
          - Suggest paths for using this package for science problems in the Department of Energy
         """
         model = ChatOpenAI(
-            model       = "o1",
+            model       = "o3-mini",
             max_tokens  = 50000,
             timeout     = None,
             max_retries = 2)

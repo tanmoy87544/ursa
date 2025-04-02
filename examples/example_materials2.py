@@ -33,7 +33,7 @@ def main():
     """Run a simple example of the scientific agent."""
     try:
         model = ChatOpenAI(
-            model       = "o1",
+            model       = "o3-mini",
             max_tokens  = 10000,
             timeout     = None,
             max_retries = 2)

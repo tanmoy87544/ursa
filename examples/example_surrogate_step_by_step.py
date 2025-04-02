@@ -25,7 +25,7 @@ def main():
     """
     try:
         model = ChatOpenAI(
-            model       = "o1",
+            model       = "o3-mini",
             max_tokens  = 50000,
             timeout     = None,
             max_retries = 2)
