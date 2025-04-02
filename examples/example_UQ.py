@@ -2,7 +2,7 @@ import sys
 sys.path.append("../../.")
 
 from lanl_scientific_agent.agents import ExecutionAgent, ResearchAgent, HypothesizerAgent
-from lanl_scientific_agent.agents import ExecutionState, ResearchState, HypothesizerState
+from lanl_scientific_agent.agents import HypothesizerState
 # from lanl_scientific_agent.agent.execution_agent import ExecutionAgent
 from langchain_core.messages                     import HumanMessage
 from langchain_openai                            import ChatOpenAI
@@ -46,13 +46,14 @@ def main():
         research_result = researcher.action.invoke(inputs)
 
         initial_state = HypothesizerState(
-            question            = problem + sum([str(x.content) for x in research_result["messages"]]),
-            current_iteration   =        0,
-            max_iterations      =        3,
-            agent1_solution     =       [],
-            agent2_critiques    =       [],
-            agent3_perspectives =       [],
-            final_solution      =       "",
+            question              = problem + "".join([str(x.content) for x in research_result["messages"]]),
+            question_search_query = "",
+            current_iteration     =  0,
+            max_iterations        =  3,
+            agent1_solution       = [],
+            agent2_critiques      = [],
+            agent3_perspectives   = [],
+            final_solution        = "",
         )
 
         hypothesis_results   = hypothesizer.action.invoke(initial_state)

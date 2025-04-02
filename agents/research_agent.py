@@ -15,8 +15,9 @@ from bs4      import BeautifulSoup
 
 import requests
 
-from .base                             import BaseAgent
-from ..prompt_library.research_prompts import research_prompt, reflection_prompt
+from .base                              import BaseAgent
+from ..prompt_library.research_prompts  import research_prompt, reflection_prompt
+from ..prompt_library.execution_prompts import summarize_prompt
 
 class ResearchState(TypedDict):
     messages: Annotated[list, add_messages]
@@ -38,9 +39,9 @@ class ResearchAgent(BaseAgent):
         return {"messages": [HumanMessage(content=res.content)]}
 
     def response_node(self, state: ResearchState) -> ResearchState:
-        messages = state["messages"]
-        print("Response Node: ", messages[-2])
-        return {"messages": [messages[-2]]}
+        messages = [SystemMessage(content=summarize_prompt)] + state["messages"]
+        response = self.llm.invoke(messages)
+        return {"messages": [response.content]}
 
     def _initialize_agent(self):
         self.graph = StateGraph(ResearchState)

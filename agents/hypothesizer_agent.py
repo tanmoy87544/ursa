@@ -20,6 +20,7 @@ RESET = "\033[0m"
 # Define our state schema
 class HypothesizerState(TypedDict):
     question: str
+    question_search_query: str
     current_iteration: int
     max_iterations: int
     agent1_solution: List[str]  # List to store each iteration of solutions
@@ -59,10 +60,12 @@ class HypothesizerAgent(BaseAgent):
         else:
             user_content += "Research this problem and generate a solution."
 
-        raw_search_results = self.search_tool.invoke(state['question'])
+        search_query = self.llm.invoke(f"Here is a problem description: {state['question']}. Turn it into a compact search query to gain more information.").content
+        raw_search_results = self.search_tool.invoke(search_query)
 
         # Parse the results if possible, so we can collect URLs
         new_state = state.copy()
+        new_state["question_search_query"] = search_query
         if "visited_sites" not in new_state:
             new_state["visited_sites"] = []
 
@@ -109,7 +112,7 @@ class HypothesizerAgent(BaseAgent):
             "Provide a detailed critique of this solution. Identify potential flaws, assumptions, and areas for improvement."
         )
 
-        fact_check_query = f"fact check {state['question']} solution effectiveness"
+        fact_check_query = f"fact check {state['question_search_query']} solution effectiveness"
 
         raw_search_results = self.search_tool.invoke(fact_check_query)
 
@@ -164,7 +167,7 @@ class HypothesizerAgent(BaseAgent):
             "Simulate how a competitor, government agency, or other stakeholder might respond to this solution."
         )
 
-        competitor_search_query = f"competitor responses to {state['question']}"
+        competitor_search_query = f"competitor responses to {state['question_search_query']}"
 
         raw_search_results = self.search_tool.invoke(competitor_search_query)
 
