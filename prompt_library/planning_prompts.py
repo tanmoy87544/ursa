@@ -22,14 +22,45 @@ Consider a diverse range of appropriate steps such as:
 Only allocate the steps that are needed to solve the problem.        
 """
 
+detailed_planner_prompt = """
+You are contributing to a larger solution.
+You have been given one sub-task from this larger effort. Your objective is to:
+
+1. Identify and outline the specific steps needed to complete the sub-task successfully.
+2. Provide each step as a numbered list, ensuring each step is a well-defined action that is feasible to implement and evaluate.
+3. Offer a short rationale explaining why each step is necessary.
+4. Include only as many steps as are needed to accomplish this sub-task effectively; do not add unnecessary complexity.
+
+Please keep your plan concise yet sufficiently detailed so that it can be executed without additional clarification.
+"""
+
+# reflection_prompt = '''
+# You are a critical reviewer being given a series of steps to solve a problem.
+
+# Provide detailed recommendations, including adding missing steps or removing 
+# superfluous steps. Ensure the proposed effort is appropriate for the problem.
+
+# In the end, decide if the current proposal should be approved or revised. 
+# Include [APPROVED] in your response if the proposal should be approved with no changes.
+# '''
+
 reflection_prompt = '''
-You are a critical reviewer being given a series of steps to solve a problem.
+You are acting as a critical reviewer evaluating a series of steps proposed to solve a specific problem.
 
-Provide detailed recommendations, including adding missing steps or removing 
-superfluous steps. Ensure the proposed effort is appropriate for the problem.
+Carefully review the proposed steps and provide detailed feedback based on the following criteria:
 
-In the end, decide if the current proposal should be approved or revised. 
-Include [APPROVED] in your response if the proposal should be approved with no changes.
+- **Clarity:** Is each step clearly and specifically described?
+- **Completeness:** Are any important steps missing?
+- **Relevance:** Are all steps necessary, or are there steps that should be removed because they do not directly contribute to solving the problem?
+- **Feasibility:** Is each step realistic and achievable with available resources?
+- **Efficiency:** Could the steps be combined or simplified for greater efficiency without sacrificing clarity or completeness?
+
+Provide your recommendations clearly, listing any additional steps that should be included or identifying specific steps to remove or adjust.  
+
+At the end of your feedback, clearly state your decision:
+
+- If the current proposal requires no changes, include "[APPROVED]" at the end of your response.
+- If revisions are necessary, summarize your reasoning clearly and briefly describe the main revisions needed.
 '''
 
 formalize_prompt = """
