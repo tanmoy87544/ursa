@@ -9,16 +9,16 @@ from langchain_ollama.chat_models import ChatOllama
 
 
 problem_definition = '''
-Developing materials that are able to stay brittle at low temperatures is a critical part of advancing space travel.
+Developing materials that are able to do not become brittle at low temperatures is a critical part of advancing space travel.
 
 High-entropy alloys have potential to develop metals that are not brittle in the cold temperatures of space.
 
-Hypothesize some metal combinations that may lead to useful alloys and identify the mixture weights for these metals for optimal alloys.
+Hypothesize high-entropy alloys and identify the mixture weights for these metals for optimal material properties.
 
 Your only tools for identifying the materials are:
     - Writing and executing python code.
     - Acquiring materials data from reputable online resources.
-        - Attempt to use freely available data that does not require an API KEY
+        - Your environment does have an API key for the Materials DB, so you can query information from it.
     - Installing and evaluating repuatable, openly available materials models. 
 
 You cannot perform any materials synthesis or experimental testing.
@@ -50,14 +50,10 @@ def main():
         hypothesizer = HypothesizerAgent(llm  = model)
         planner      = PlanningAgent(llm      = model)
         executor     = ExecutionAgent(llm     = model)
-        researcher   = ResearchAgent(llm      = model)
-
-        inputs          = {"messages": [HumanMessage(content=problem_definition)]}
-        research_result = researcher.action.invoke(inputs)
 
         # Solve the problem
         initial_state = HypothesizerState(
-            question              = research_result["messages"][-1].content,
+            question              = problem_definition,
             question_search_query =                 "",
             current_iteration     =                  0,
             max_iterations        =                  4,

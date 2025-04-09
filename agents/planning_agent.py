@@ -4,6 +4,8 @@ from langgraph.graph.message      import add_messages
 from typing_extensions            import TypedDict
 # from langgraph.checkpoint.memory  import MemorySaver
 
+# from langchain_core.runnables.graph import MermaidDrawMethod
+
 from typing   import Annotated, List, Dict, Any, Optional
 from pydantic import Field
 
@@ -75,6 +77,7 @@ class PlanningAgent(BaseAgent):
         # memory      = MemorySaver()
         # self.action = self.graph.compile(checkpointer=memory)
         self.action = self.graph.compile()
+        # self.action.get_graph().draw_mermaid_png(output_file_path="planning_agent_graph.png", draw_method=MermaidDrawMethod.PYPPETEER)
 
 config = {"configurable": {"thread_id": "1"}}
 

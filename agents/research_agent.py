@@ -8,6 +8,7 @@ from typing_extensions            import TypedDict
 
 from langchain_community.tools    import DuckDuckGoSearchResults
 from langchain_community.tools    import TavilySearchResults
+# from langchain_core.runnables.graph import MermaidDrawMethod
 
 from typing   import Annotated, Optional, List
 from pydantic import Field
@@ -35,13 +36,19 @@ class ResearchAgent(BaseAgent):
     def review_node(self, state: ResearchState) -> ResearchState:
         translated = [SystemMessage(content=reflection_prompt)] + state["messages"]
         res        = self.llm.invoke(translated)
-        print("Review Node: ", res.content)
         return {"messages": [HumanMessage(content=res.content)]}
 
     def response_node(self, state: ResearchState) -> ResearchState:
         messages = [SystemMessage(content=summarize_prompt)] + state["messages"]
         response = self.llm.invoke(messages)
-        return {"messages": [response.content]}
+        
+        urls_visited = []
+        for message in messages:
+            if "tool_calls" in message:
+                if "url" in message.tool_calls["args"]:
+                    urls_visited.append(message.tool_calls["args"]["url"])
+
+        return {"messages": [response.content], "urls_visited":urls_visited}
 
     def _initialize_agent(self):
         self.graph = StateGraph(ResearchState)
@@ -63,6 +70,7 @@ class ResearchAgent(BaseAgent):
             }
         )
         self.action = self.graph.compile()
+        # self.action.get_graph().draw_mermaid_png(output_file_path="./research_agent_graph.png", draw_method=MermaidDrawMethod.PYPPETEER)
 
 
 

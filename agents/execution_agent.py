@@ -11,6 +11,7 @@ from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
 
 from langchain_community.tools      import DuckDuckGoSearchResults
 from langchain_community.tools      import TavilySearchResults
+# from langchain_core.runnables.graph import MermaidDrawMethod
 
 import subprocess
 
@@ -98,6 +99,7 @@ class ExecutionAgent(BaseAgent):
         self.graph.add_edge("summarize",     END)
 
         self.action = self.graph.compile()
+        # self.action.get_graph().draw_mermaid_png(output_file_path="execution_agent_graph.png", draw_method=MermaidDrawMethod.PYPPETEER)
 
 @tool
 def run_cmd(query: str) -> str:
