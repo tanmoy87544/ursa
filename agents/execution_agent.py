@@ -21,8 +21,18 @@ from ..prompt_library.execution_prompts import executor_prompt, summarize_prompt
 workspace_dir = "./workspace/"
 os.makedirs(workspace_dir, exist_ok=True)
 
+
+# --- ANSI color codes ---
+GREEN = "\033[92m"
+BLUE  = "\033[94m"
+RED   = "\033[91m"
+RESET = "\033[0m"
+BOLD  = "\033[1m"
+
 class ExecutionState(TypedDict):
     messages: Annotated[list, add_messages]
+    current_progress: str
+    code_files: list[str]
 
 class ExecutionAgent(BaseAgent):
     def __init__(self, llm = "OpenAI/gpt-4o", *args, **kwargs):
@@ -37,11 +47,12 @@ class ExecutionAgent(BaseAgent):
 
     # Define the function that calls the model
     def query_executor(self, state: ExecutionState) -> ExecutionState:
-        messages = state["messages"]
-        if type(state["messages"][0]) == SystemMessage:
-            state["messages"][0] = SystemMessage(content=self.executor_prompt)
+        new_state = state.copy()
+        messages  = state["messages"]
+        if type(new_state["messages"][0]) == SystemMessage:
+            new_state["messages"][0] = SystemMessage(content=self.executor_prompt)
         else:
-            state["messages"]    = [SystemMessage(content=self.executor_prompt)] + state["messages"]
+            new_state["messages"]    = [SystemMessage(content=self.executor_prompt)] + state["messages"]
         response = self.llm.invoke(messages)
         return {"messages": [response]}
 
@@ -53,17 +64,25 @@ class ExecutionAgent(BaseAgent):
 
     # Define the function that calls the model
     def safety_check(self, state: ExecutionState) -> ExecutionState:
+        new_state = state.copy()
         if state["messages"][-1].tool_calls[0]["name"] == "run_cmd":
             query        = state["messages"][-1].tool_calls[0]["args"]["query"]
             safety_check = self.llm.invoke("Assume commands to run python and Julia are safe because the files are from a trusted source. Answer only either [YES] or [NO]. Is this command safe to run: " + query)
             if "[NO]" in safety_check.content:
-                print("[WARNING]")
-                print("[WARNING] That command deemed unsafe and cannot be run: ", query, " --- ",safety_check)
-                print("[WARNING]")
+                print(f"{RED}{BOLD} [WARNING] {RESET}")
+                print(f"{RED}{BOLD} [WARNING] That command deemed unsafe and cannot be run: {RESET}", query, " --- ",safety_check)
+                print(f"{RED}{BOLD} [WARNING] {RESET}")
                 return {"messages": ["[UNSAFE] That command deemed unsafe and cannot be run: "+ query]}
-            
-            print("[PASSED] the safety check: "+query)
-        return state
+
+            print(f"{GREEN}[PASSED] the safety check: {RESET}"+query)
+        elif state["messages"][-1].tool_calls[0]["name"] == "write_code":
+            fn = state["messages"][-1].tool_calls[0]["args"].get("filename",None)
+            if "code_files" in new_state:
+                new_state["code_files"].append(fn)
+            else:
+                new_state["code_files"] = [fn]
+
+        return new_state
 
     def _initialize_agent(self):
         self.graph = StateGraph(ExecutionState)

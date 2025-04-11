@@ -26,6 +26,8 @@ You cannot perform any materials synthesis or experimental testing.
 In the end we should have a list of high-entropy alloys that are not brittle at low temperature and a justification for this.
 
 No hypothetical examples! Obtain what you need to perform the actual analysis, execute the steps, and get come to a defensible conclusion. 
+
+Summarize your results in a webpage with interactive visualization.
 '''
 
 
