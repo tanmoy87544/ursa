@@ -9,24 +9,18 @@ from langchain_ollama.chat_models import ChatOllama
 
 
 problem_definition = '''
-High-entropy alloys have potential to develop metals that are not brittle in the cold temperatures of space.
+Your goal is to map out the binary phase diagram for alloys of aluminum and nickel. 
 
-Hypothesize high-entropy alloys and identify the mixture weights for these metals for optimal material properties:
-    - Research high-entropy alloys and their properties
-    - Visualize materials properties of high-entropy alloys to communicate those with high potential.
-    - Use physical and data-driven models to predict optimal high-entropy alloys for space travel.
+For different mixing ratios of aluminum and nickel and at different tempertures, the alloy will be in different states.
 
-Your only tools for identifying the materials are:
-    - Writing and executing python code.
-    - Acquiring materials data from reputable online resources.
-        - Attempt to use freely available data that does not require an API KEY
-    - Installing and evaluating repuatable, openly available materials models. 
+We need to use the LAMMPS molecular dynamics model to evaluate configurations and map out the phase diagram.
+Write python to:
+    - Evaluate LAMMPS for different mixing ratios and temperatures
+    - Use these results to generate plots of the different phases of the allow
+    - Add more LAMMPS evaluations to refine the phase diagram if any regions are under-sampled.
 
-You cannot perform any materials synthesis or experimental testing.
-
-In the end we should have a list of high-entropy alloys that are not brittle at low temperature and a justification for this.
-
-No hypothetical examples! Obtain what you need to perform the actual analysis, execute the steps, and get come to a defensible conclusion. 
+No hypothetical examples! 
+Evaluate LAMMPS as needed. You have a valid installation.
 
 Summarize your results in a webpage with interactive visualization.
 '''
@@ -35,9 +29,14 @@ Summarize your results in a webpage with interactive visualization.
 def main():
     """Run a simple example of the scientific agent."""
     try:
-        model = ChatOpenAI(
-            model       = "o3-mini",
-            max_tokens  = 40000,
+        model_o4 = ChatOpenAI(
+            model       = "o4-mini",
+            max_tokens  = 50000,
+            timeout     = None,
+            max_retries = 2)
+        model_o3 = ChatOpenAI(
+            model       = "o3",
+            max_tokens  = 30000,
             timeout     = None,
             max_retries = 2)
         # model = ChatOllama(
@@ -50,9 +49,9 @@ def main():
         print(f"\nSolving problem: {problem_definition}\n")
         
         # Initialize the agent
-        hypothesizer = HypothesizerAgent(llm  = model)
-        planner      = PlanningAgent(llm      = model)
-        executor     = ExecutionAgent(llm     = model)
+        # hypothesizer = HypothesizerAgent(llm  = model)
+        planner      = PlanningAgent(llm      = model_o4)
+        executor     = ExecutionAgent(llm     = model_o3)
 
         # Solve the problem
         initial_state = HypothesizerState(
@@ -66,9 +65,10 @@ def main():
             final_solution        =                 "",
         )
 
-        hypothesis_results   = hypothesizer.action.invoke(initial_state)
+        # hypothesis_results   = hypothesizer.action.invoke(initial_state)
         # Solve the problem
-        planning_output = planner.action.invoke({"messages": [HumanMessage(content=problem_definition+hypothesis_results["summary_report"])]})
+        planning_output = planner.action.invoke({"messages": [HumanMessage(content=problem_definition)]})
+        print(planning_output["plan_steps"])
         last_step_string = "This is the first step."
         execute_string   = """
         Execute this step and report results for the executor of the next step. 
@@ -98,4 +98,21 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+# Solving problem: 
+# Your goal is to map out the binary phase diagram for alloys of aluminum and nickel. 
+
+# For different mixing ratios of aluminum and nickel and at different tempertures, the alloy will be in different states.
+
+# We need to use the LAMMPS molecular dynamics model to evaluate configurations and map out the phase diagram.
+# Write python to:
+#     - Evaluate LAMMPS for different mixing ratios and temperatures
+#     - Use these results to generate plots of the different phases of the allow
+#     - Add more LAMMPS evaluations to refine the phase diagram if any regions are under-sampled.
+
+
+# No hypothetical examples! 
+# Evaluate LAMMPS as needed.
+
+# Summarize your results in a webpage with interactive visualization.
 

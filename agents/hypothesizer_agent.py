@@ -8,6 +8,8 @@ from langchain_community.tools import TavilySearchResults
 from textwrap                  import dedent
 from datetime                  import datetime
 
+# from langchain_core.runnables.graph import MermaidDrawMethod
+
 from .base                                 import BaseAgent
 from ..prompt_library.hypothesizer_prompts import hypothesizer_prompt, critic_prompt, competitor_prompt
 
@@ -60,7 +62,9 @@ class HypothesizerAgent(BaseAgent):
         else:
             user_content += "Research this problem and generate a solution."
 
-        search_query = self.llm.invoke(f"Here is a problem description: {state['question']}. Turn it into a compact search query to gain more information.").content
+        search_query = self.llm.invoke(f"Here is a problem description: {state['question']}. Turn it into a short query to be fed into a search engine.").content
+        if '"' in search_query:
+            search_query = search_query.split('"')[1]
         raw_search_results = self.search_tool.invoke(search_query)
 
         # Parse the results if possible, so we can collect URLs
@@ -412,6 +416,7 @@ class HypothesizerAgent(BaseAgent):
         self.graph.set_entry_point("agent1")
 
         self.action = self.graph.compile()
+        # self.action.get_graph().draw_mermaid_png(output_file_path="hypothesizer_agent_graph.png", draw_method=MermaidDrawMethod.PYPPETEER)
 
 
 def should_continue(state: HypothesizerState) -> Literal["continue", "finish"]:
