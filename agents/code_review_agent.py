@@ -19,7 +19,6 @@ from ..prompt_library.code_review_prompts import get_code_review_prompt, get_pla
 workspace_dir = "./workspace/"
 os.makedirs(workspace_dir, exist_ok=True)
 
-
 # --- ANSI color codes ---
 GREEN = "\033[92m"
 BLUE  = "\033[94m"
@@ -37,6 +36,8 @@ class CodeReviewState(TypedDict):
 class CodeReviewAgent(BaseAgent):
     def __init__(self, llm = "OpenAI/gpt-4o", *args, **kwargs):
         super().__init__(llm, args, kwargs)
+        print("### WORK IN PROGRESS ###")
+        print("CODE REVIEW AGENT NOT YET FULLY IMPLEMENTED AND TESTED. BE AWARE THAT IT WILL LIKELY NOT WORK AS INTENDED YET.")
         self.summarize_prompt   = summarize_prompt
         self.tools              = [run_cmd, write_file, read_file]
         self.tool_node          = ToolNode(self.tools)
