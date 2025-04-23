@@ -7,7 +7,7 @@ from langchain_core.tools    import tool
 from langgraph.prebuilt      import ToolNode
 
 from langgraph.graph         import END, StateGraph, START
-from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
+from langchain_core.messages import HumanMessage, SystemMessage, AIMessage, ToolMessage
 
 from langchain_community.tools      import DuckDuckGoSearchResults
 from langchain_community.tools      import TavilySearchResults
@@ -72,7 +72,7 @@ class ExecutionAgent(BaseAgent):
                 print(f"{RED}{BOLD} [WARNING] {RESET}")
                 print(f"{RED}{BOLD} [WARNING] That command deemed unsafe and cannot be run: {RESET}", query, " --- ",safety_check)
                 print(f"{RED}{BOLD} [WARNING] {RESET}")
-                return {"messages": ["[UNSAFE] That command deemed unsafe and cannot be run: "+ query]}
+                return {"messages": [ToolMessage(content="[UNSAFE] That command deemed unsafe and cannot be run: "+ query, tool_call_id=state["messages"][-1].tool_calls[0]["id"])]}
 
             print(f"{GREEN}[PASSED] the safety check: {RESET}"+query)
         elif state["messages"][-1].tool_calls[0]["name"] == "write_code":
@@ -122,18 +122,27 @@ class ExecutionAgent(BaseAgent):
 
 @tool
 def run_cmd(query: str) -> str:
-    """Run command from commandline"""
+    """
+    Run a commandline command from using the subprocess package in python
+
+    Args:
+        query: commandline command to be run as a string given to the subprocess.run command.
+    """
     
     print("RUNNING: ", query)
-    process = subprocess.Popen(
-        query.split(" "),
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True,
-        cwd=workspace_dir
-    )
+    try:
+        process = subprocess.Popen(
+            query.split(" "),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            cwd=workspace_dir
+        )
 
-    stdout, stderr = process.communicate(timeout=600)
+        stdout, stderr = process.communicate(timeout=60000)
+    except KeyboardInterrupt:
+        print("Keyboard Interrupt of command: ", query)
+        stdout, stderr = "", "KeyboardInterrupt:"
 
     print("STDOUT: ", stdout)
     print("STDERR: ", stderr)

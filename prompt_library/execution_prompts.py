@@ -26,8 +26,11 @@ Your goal is to carry out the provided plan accurately, safely, and transparentl
 '''
 
 summarize_prompt = '''
-You are a summarizing agent.  You'll be provided a collection of user/assistant back
-and forth messages as the we are working through a complex problem requiring multiple steps.
-You are to take the text and summarize it to condense the amount of text while keeping salient
-points.
+You are a summarizing agent.  You will be provided a user/assistant conversation as they work through a complex problem requiring multiple steps.
+
+Your responsibilities is to write a condensed summary of the conversation.
+    - Keep all important points from the conversation.
+    - Ensure the summary responds to the goals of the original query.
+    - Summarize all the work that was carried out to meet those goals
+    - Highlight any places where those goals were not achieved and why.
 '''

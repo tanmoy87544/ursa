@@ -1,4 +1,4 @@
-from langchain_core.messages      import HumanMessage, SystemMessage
+from langchain_core.messages      import HumanMessage, SystemMessage, ToolMessage
 from langgraph.prebuilt           import create_react_agent
 from langchain_core.tools         import tool
 
@@ -16,13 +16,22 @@ from bs4      import BeautifulSoup
 
 import requests
 
+# import primp
+# client = primp.Client(verify=True, ca_cert_file="/Users/mikegros/Downloads/ZS_Root_CA.pem")
+
 from .base                              import BaseAgent
-from ..prompt_library.research_prompts  import research_prompt, reflection_prompt
-from ..prompt_library.execution_prompts import summarize_prompt
+from ..prompt_library.research_prompts  import research_prompt, reflection_prompt, summarize_prompt
+
+# --- ANSI color codes ---
+BLUE  = "\033[1;34m"
+RED   = "\033[1;31m"
+GREEN = "\033[92m"
+RESET = "\033[0m"
 
 class ResearchState(TypedDict):
+    research_query: str
     messages: Annotated[list, add_messages]
-    urls_visited: Optional[List[str]]
+    urls_visited: List[str]
     max_research_steps: Optional[int] =  Field(default=100, description="Maximum number of research steps")
 
 class ResearchAgent(BaseAgent):
@@ -39,15 +48,14 @@ class ResearchAgent(BaseAgent):
         return {"messages": [HumanMessage(content=res.content)]}
 
     def response_node(self, state: ResearchState) -> ResearchState:
-        messages = [SystemMessage(content=summarize_prompt)] + state["messages"]
+        messages = state["messages"] + [SystemMessage(content=summarize_prompt)]
         response = self.llm.invoke(messages)
         
         urls_visited = []
         for message in messages:
-            if "tool_calls" in message:
-                if "url" in message.tool_calls["args"]:
-                    urls_visited.append(message.tool_calls["args"]["url"])
-
+            if message.model_dump().get("tool_calls",[]):
+                if "url" in message.tool_calls[0]["args"]:
+                    urls_visited.append(message.tool_calls[0]["args"]["url"])
         return {"messages": [response.content], "urls_visited":urls_visited}
 
     def _initialize_agent(self):
@@ -72,10 +80,8 @@ class ResearchAgent(BaseAgent):
         self.action = self.graph.compile()
         # self.action.get_graph().draw_mermaid_png(output_file_path="./research_agent_graph.png", draw_method=MermaidDrawMethod.PYPPETEER)
 
-
-
 @tool
-def process_content(url: str) -> str:
+def process_content(url: str) -> str: #, context: str) -> str:
     """
     Processes content from a given webpage.
     
@@ -85,13 +91,13 @@ def process_content(url: str) -> str:
     print("Parsing information from ", url)
     response = requests.get(url)
     soup     = BeautifulSoup(response.content, 'html.parser')
+
+    #summarized_information = self.llm.invoke()
     return soup.get_text()
 
 search_tool = DuckDuckGoSearchResults(output_format="json", num_results=10)
 # search_tool = TavilySearchResults(max_results=10, search_depth="advanced",include_answer=True)
 
-# tool_node = ToolNode(tools)
-# llm.bind_tools(tools)
 
 def should_continue(state: ResearchState):
     if len(state["messages"]) > (state.get("max_research_steps",100)+3):
@@ -101,12 +107,18 @@ def should_continue(state: ResearchState):
     return "research"
 
 def main():
-    researcher = ResearchAgent()
+    researcher = ResearchAgent(llm="OpenAI/gpt-4o")
     problem_string = "Who are the 2025 Detroit Tigers top 10 prospects and what year were they born?" 
     inputs = {"messages": [HumanMessage(content=problem_string)]}
-    result = researcher.action.invoke(inputs)
-    for x in result["messages"]:
-        print(x.content)
+    result = researcher.action.invoke(inputs, {'recursion_limit':10000})
+    
+    colors = [BLUE, RED]
+    for ii,x in enumerate(result["messages"][:-1]):
+        if type(x) != ToolMessage:
+            print(f"{colors[ii % 2]}" + x.content+f"{RESET}")
+    print(80*"#")
+    print(f"{GREEN}"+result["messages"][-1].content+f"{RESET}")
+    print("Citations: ", result["urls_visited"])
     return result
 
 if __name__ == "__main__":
