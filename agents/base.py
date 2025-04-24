@@ -1,6 +1,6 @@
 from langchain_openai             import ChatOpenAI
 from langchain_ollama.chat_models import ChatOllama
-
+from langchain_huggingface import HuggingFaceEndpoint, ChatHuggingFace
 
 class BaseAgent:
     def __init__(self, llm, *args, **kwargs):
@@ -18,6 +18,14 @@ class BaseAgent:
                     model       = self.llm_model,
                     max_tokens  = kwargs.get("max_tokens",10000)
                 )
+            # elif self.llm_provider.lower() == "hf":
+            #     llm = HuggingFaceEndpoint(
+            #         repo_id=self.llm_model,
+            #         task="text-generation",
+            #         max_new_tokens=kwargs.get("max_tokens",10000),
+            #         do_sample=True,
+            #     )
+            #     self.llm = ChatHuggingFace(llm=llm, verbose=True)
             else:
                 raise TypeError("llm argument must be a string with the provider and model or a model itself")
         else:

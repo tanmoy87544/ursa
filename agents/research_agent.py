@@ -15,13 +15,13 @@ from pydantic import Field
 from bs4      import BeautifulSoup
 
 import requests
-
+import inspect
 # import primp
 # client = primp.Client(verify=True, ca_cert_file="/Users/mikegros/Downloads/ZS_Root_CA.pem")
 
 from .base                              import BaseAgent
 from ..prompt_library.research_prompts  import research_prompt, reflection_prompt, summarize_prompt
-
+from ..util.tool_helper                 import class_bound_tool, postprocess_tools
 # --- ANSI color codes ---
 BLUE  = "\033[1;34m"
 RED   = "\033[1;31m"
@@ -39,10 +39,14 @@ class ResearchAgent(BaseAgent):
         super().__init__(llm, args, kwargs)
         self.research_prompt    = research_prompt
         self.reflection_prompt  = reflection_prompt
-        self.tools              = [search_tool, process_content]
+        # cb_tools                = postprocess_tools([self.process_content])
+        # print(cb_tools[0].func(url="www.google.com"))
+        self.tools              = [search_tool, process_content] # + cb_tools
         self._initialize_agent()
 
     def review_node(self, state: ResearchState) -> ResearchState:
+        for x in state["messages"][-3:]:
+            print("MESSAGES: ",x.content)
         translated = [SystemMessage(content=reflection_prompt)] + state["messages"]
         res        = self.llm.invoke(translated)
         return {"messages": [HumanMessage(content=res.content)]}
@@ -80,7 +84,6 @@ class ResearchAgent(BaseAgent):
         self.action = self.graph.compile()
         # self.action.get_graph().draw_mermaid_png(output_file_path="./research_agent_graph.png", draw_method=MermaidDrawMethod.PYPPETEER)
 
-@tool
 def process_content(url: str) -> str: #, context: str) -> str:
     """
     Processes content from a given webpage.
