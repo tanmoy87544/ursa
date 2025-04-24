@@ -3,14 +3,16 @@ from langgraph.prebuilt           import create_react_agent
 from langchain_core.tools         import tool
 
 from langgraph.graph              import END, StateGraph, START
+from langgraph.prebuilt           import InjectedState
 from langgraph.graph.message      import add_messages
 from typing_extensions            import TypedDict
 
+from langchain_openai             import ChatOpenAI
 from langchain_community.tools    import DuckDuckGoSearchResults
 from langchain_community.tools    import TavilySearchResults
 # from langchain_core.runnables.graph import MermaidDrawMethod
 
-from typing   import Annotated, Optional, List
+from typing   import Annotated, Optional, List, Any
 from pydantic import Field
 from bs4      import BeautifulSoup
 
@@ -21,7 +23,7 @@ import inspect
 
 from .base                              import BaseAgent
 from ..prompt_library.research_prompts  import research_prompt, reflection_prompt, summarize_prompt
-from ..util.tool_helper                 import class_bound_tool, postprocess_tools
+
 # --- ANSI color codes ---
 BLUE  = "\033[1;34m"
 RED   = "\033[1;31m"
@@ -33,20 +35,21 @@ class ResearchState(TypedDict):
     messages: Annotated[list, add_messages]
     urls_visited: List[str]
     max_research_steps: Optional[int] =  Field(default=100, description="Maximum number of research steps")
+    remaining_steps: int
+    is_last_step: bool
+    model: Any
+# Adding the model to the state clumsily so that all "read" sources arent in the context window. That eats a ton of tokens because each llm.invoke 
+#     passes all the tokens of all the sources. 
 
 class ResearchAgent(BaseAgent):
     def __init__(self, llm = "OpenAI/gpt-4o", *args, **kwargs):
         super().__init__(llm, args, kwargs)
         self.research_prompt    = research_prompt
         self.reflection_prompt  = reflection_prompt
-        # cb_tools                = postprocess_tools([self.process_content])
-        # print(cb_tools[0].func(url="www.google.com"))
         self.tools              = [search_tool, process_content] # + cb_tools
         self._initialize_agent()
 
     def review_node(self, state: ResearchState) -> ResearchState:
-        for x in state["messages"][-3:]:
-            print("MESSAGES: ",x.content)
         translated = [SystemMessage(content=reflection_prompt)] + state["messages"]
         res        = self.llm.invoke(translated)
         return {"messages": [HumanMessage(content=res.content)]}
@@ -64,7 +67,7 @@ class ResearchAgent(BaseAgent):
 
     def _initialize_agent(self):
         self.graph = StateGraph(ResearchState)
-        self.graph.add_node("research", create_react_agent(self.llm, self.tools, prompt=self.research_prompt))
+        self.graph.add_node("research", create_react_agent(self.llm, self.tools, state_schema=ResearchState, prompt=self.research_prompt))
 
         self.graph.add_node("review",     self.review_node)
         self.graph.add_node("response", self.response_node)
@@ -84,19 +87,27 @@ class ResearchAgent(BaseAgent):
         self.action = self.graph.compile()
         # self.action.get_graph().draw_mermaid_png(output_file_path="./research_agent_graph.png", draw_method=MermaidDrawMethod.PYPPETEER)
 
-def process_content(url: str) -> str: #, context: str) -> str:
+def process_content(url: str, context: str, state: Annotated[dict, InjectedState]) -> str: #, context: str) -> str:
     """
     Processes content from a given webpage.
     
     Args:
-        url: string with the url to obtain text content from
+        url: string with the url to obtain text content from.
+        context: string summary of the information the agent wants from the url for summarizing salient information.
     """
     print("Parsing information from ", url)
     response = requests.get(url)
     soup     = BeautifulSoup(response.content, 'html.parser')
 
-    #summarized_information = self.llm.invoke()
-    return soup.get_text()
+    content_prompt = f'''
+    Here is the full content:
+    {soup.get_text()}
+
+    Carefully summarize the content in full detail, given the following context:
+    {context}
+    '''
+    summarized_information = state["model"].invoke(content_prompt).content
+    return summarized_information
 
 search_tool = DuckDuckGoSearchResults(output_format="json", num_results=10)
 # search_tool = TavilySearchResults(max_results=10, search_depth="advanced",include_answer=True)
@@ -110,9 +121,14 @@ def should_continue(state: ResearchState):
     return "research"
 
 def main():
-    researcher = ResearchAgent(llm="OpenAI/gpt-4o")
+    model = ChatOpenAI(
+        model       = "gpt-4o",
+        max_tokens  = 10000,
+        timeout     = None,
+        max_retries = 2)
+    researcher = ResearchAgent(llm=model)
     problem_string = "Who are the 2025 Detroit Tigers top 10 prospects and what year were they born?" 
-    inputs = {"messages": [HumanMessage(content=problem_string)]}
+    inputs = {"messages": [HumanMessage(content=problem_string)], "model":model}
     result = researcher.action.invoke(inputs, {'recursion_limit':10000})
     
     colors = [BLUE, RED]
