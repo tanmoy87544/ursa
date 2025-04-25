@@ -6,6 +6,7 @@ from langgraph.graph.message import add_messages
 from langchain_core.tools    import tool
 from langgraph.prebuilt      import ToolNode
 
+from langgraph.prebuilt      import InjectedState
 from langgraph.graph         import END, StateGraph, START
 from langchain_core.messages import HumanMessage, SystemMessage, AIMessage, ToolMessage
 
@@ -14,13 +15,10 @@ from langchain_community.tools      import TavilySearchResults
 # from langchain_core.runnables.graph import MermaidDrawMethod
 
 import subprocess
+import coolname
 
 from .base                              import BaseAgent
 from ..prompt_library.execution_prompts import executor_prompt, summarize_prompt
-
-workspace_dir = "./workspace/"
-os.makedirs(workspace_dir, exist_ok=True)
-
 
 # --- ANSI color codes ---
 GREEN = "\033[92m"
@@ -33,6 +31,7 @@ class ExecutionState(TypedDict):
     messages: Annotated[list, add_messages]
     current_progress: str
     code_files: list[str]
+    workspace: str
 
 class ExecutionAgent(BaseAgent):
     def __init__(self, llm = "OpenAI/gpt-4o", *args, **kwargs):
@@ -48,13 +47,17 @@ class ExecutionAgent(BaseAgent):
     # Define the function that calls the model
     def query_executor(self, state: ExecutionState) -> ExecutionState:
         new_state = state.copy()
+        if "workspace" not in new_state.keys():
+            new_state["workspace"] = coolname.generate_slug(2)
+            print(f"{RED}Creating the folder {BLUE}{BOLD}{new_state['workspace']}{RESET}{RED} for this project.{RESET}")
+            os.makedirs(new_state["workspace"], exist_ok=True)
         messages  = state["messages"]
         if type(new_state["messages"][0]) == SystemMessage:
             new_state["messages"][0] = SystemMessage(content=self.executor_prompt)
         else:
             new_state["messages"]    = [SystemMessage(content=self.executor_prompt)] + state["messages"]
         response = self.llm.invoke(messages)
-        return {"messages": [response]}
+        return {"messages": [response], "workspace":new_state["workspace"]}
 
     # Define the function that calls the model
     def summarize(self, state: ExecutionState) -> ExecutionState:
@@ -121,14 +124,14 @@ class ExecutionAgent(BaseAgent):
         # self.action.get_graph().draw_mermaid_png(output_file_path="execution_agent_graph.png", draw_method=MermaidDrawMethod.PYPPETEER)
 
 @tool
-def run_cmd(query: str) -> str:
+def run_cmd(query: str, state: Annotated[dict, InjectedState]) -> str:
     """
     Run a commandline command from using the subprocess package in python
 
     Args:
         query: commandline command to be run as a string given to the subprocess.run command.
     """
-    
+    workspace_dir = state["workspace"]
     print("RUNNING: ", query)
     try:
         process = subprocess.Popen(
@@ -150,7 +153,7 @@ def run_cmd(query: str) -> str:
     return f"STDOUT: {stdout} and STDERR: {stderr}"
 
 @tool
-def write_code(code: str, filename: str):
+def write_code(code: str, filename: str, state: Annotated[dict, InjectedState]):
     """
     Writes python or Julia code to a file in the given workspace as requested.
     
@@ -161,6 +164,7 @@ def write_code(code: str, filename: str):
     Returns:
         Execution results
     """
+    workspace_dir = state["workspace"]
     print("Writing filename ", filename)
     try:
         # Extract code if wrapped in markdown code blocks
@@ -213,7 +217,7 @@ def command_safe(state: ExecutionState) -> Literal["safe", "unsafe"]:
 def main():
     execution_agent = ExecutionAgent()
     problem_string = "Write and execute a python script to print the first 10 integers." 
-    inputs = {"messages": [HumanMessage(content=problem_string)]}
+    inputs = {"messages": [HumanMessage(content=problem_string)]}#, "workspace":"dummy_test"}
     result = execution_agent.action.invoke(inputs)
     print(result["messages"][-1].content)
     return result

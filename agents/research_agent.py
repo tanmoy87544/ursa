@@ -18,8 +18,6 @@ from bs4      import BeautifulSoup
 
 import requests
 import inspect
-# import primp
-# client = primp.Client(verify=True, ca_cert_file="/Users/mikegros/Downloads/ZS_Root_CA.pem")
 
 from .base                              import BaseAgent
 from ..prompt_library.research_prompts  import research_prompt, reflection_prompt, summarize_prompt
@@ -87,7 +85,7 @@ class ResearchAgent(BaseAgent):
         self.action = self.graph.compile()
         # self.action.get_graph().draw_mermaid_png(output_file_path="./research_agent_graph.png", draw_method=MermaidDrawMethod.PYPPETEER)
 
-def process_content(url: str, context: str, state: Annotated[dict, InjectedState]) -> str: #, context: str) -> str:
+def process_content(url: str, context: str, state: Annotated[dict, InjectedState]) -> str:
     """
     Processes content from a given webpage.
     
