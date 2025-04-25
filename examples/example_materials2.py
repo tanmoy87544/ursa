@@ -73,7 +73,7 @@ def main():
         execute_string   = "Execute this step and report results for the executor of the next step."
         for x in planning_output["plan_steps"]:
             plan_string      = str(x)
-            final_results    = executor.action.invoke({"messages": [HumanMessage(content=last_step_string + plan_string + execute_string)]},{"recursion_limit": 999999})
+            final_results    = executor.action.invoke({"messages": [HumanMessage(content=last_step_string + plan_string + execute_string)], "workspace":"workspace_materials2"},{"recursion_limit": 999999})
             last_step_string = final_results["messages"][-1].content
             print(last_step_string)
                 

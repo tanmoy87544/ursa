@@ -29,7 +29,7 @@ def main():
         #     max_retries = 2
         # )
         
-        init = {"messages": [HumanMessage(content=problem)]}
+        init = {"messages": [HumanMessage(content=problem)], "workspace":"workspace_BO"}
         
         print(f"\nSolving problem: {problem}\n")
         

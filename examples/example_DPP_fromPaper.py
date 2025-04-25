@@ -61,7 +61,7 @@ def main():
             last_substep_string   = "Beginning to break down of the plan. "
             for y in detail_output["plan_steps"]:
                 execute_string      = "Execute this step and report results for the executor of the next step. Do not use placeholders but fully carry out each step."
-                final_results       = executor.action.invoke({"messages": [HumanMessage(content=last_substep_string + str(y) + execute_string)]},{"recursion_limit": 999999})
+                final_results       = executor.action.invoke({"messages": [HumanMessage(content=last_substep_string + str(y) + execute_string)], "workspace":"workspace_DPPpaper"},{"recursion_limit": 999999})
                 last_substep_string = final_results["messages"][-1].content
                 print(last_substep_string)
             last_step_string = last_substep_string

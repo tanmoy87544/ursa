@@ -50,7 +50,8 @@ class ExecutionAgent(BaseAgent):
         if "workspace" not in new_state.keys():
             new_state["workspace"] = coolname.generate_slug(2)
             print(f"{RED}Creating the folder {BLUE}{BOLD}{new_state['workspace']}{RESET}{RED} for this project.{RESET}")
-            os.makedirs(new_state["workspace"], exist_ok=True)
+        os.makedirs(new_state["workspace"], exist_ok=True)
+        
         messages  = state["messages"]
         if type(new_state["messages"][0]) == SystemMessage:
             new_state["messages"][0] = SystemMessage(content=self.executor_prompt)
