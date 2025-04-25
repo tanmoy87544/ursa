@@ -1,4 +1,6 @@
-# LANL Scientific Agent
+# OppenAI - The LANL Scientific Agent
+
+![OppenAI Logo](./logos/logo.png){width=200px}
 
 Testing a centralized package for an agentic workflow. This should not be the final name, but I am pushing up this code that works. 
 
