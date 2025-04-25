@@ -84,7 +84,7 @@ def main():
 
                 {execute_string}
             """
-            final_results    = executor.action.invoke({"messages": [HumanMessage(content=step_prompt)]},{"recursion_limit": 999999})
+            final_results    = executor.action.invoke({"messages": [HumanMessage(content=step_prompt)], "workspace":"workspace_materials1"},{"recursion_limit": 999999})
             last_step_string = final_results["messages"][-1].content
             print(last_step_string)
                 

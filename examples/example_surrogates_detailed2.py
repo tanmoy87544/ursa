@@ -84,7 +84,7 @@ def main():
 
                     {execute_string}
                 """
-                final_results       = executor.action.invoke({"messages": [HumanMessage(content=substep_prompt)]},{"recursion_limit": 999999})
+                final_results       = executor.action.invoke({"messages": [HumanMessage(content=substep_prompt)], "workspace":"workspace_surrogate_detailed2"},{"recursion_limit": 999999})
                 last_substep_string = final_results["messages"][-1].content
                 print(last_substep_string)
             last_step_string = last_substep_string

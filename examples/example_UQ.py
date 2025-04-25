@@ -64,6 +64,7 @@ def main():
         # hypothesis_results   = hypothesizer.action.invoke(initial_state)
 
         # executor_messages = research_result["messages"].append(HumanMessage(content=hypothesis_results["summary_report"]))
+        research_result["workspace"] = "workspace_UQ"
         final_results     = executor.action.invoke(research_result,{"recursion_limit": 999999})
         for x in final_results["messages"]:
             print(x.content)
