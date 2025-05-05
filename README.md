@@ -10,7 +10,6 @@ It may have a few extra packages from testing and examples, but it should provid
 ## Installation
 With pip:
 ```console
-
 pip install git+ssh://git@gitlab.lanl.gov/science-fair/lanl_scientific_agent.git
 ```
 
