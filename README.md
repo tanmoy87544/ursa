@@ -10,12 +10,13 @@ It may have a few extra packages from testing and examples, but it should provid
 ## Installation
 With pip:
 ```console
-pip install git+https://gitlab.lanl.gov/science-fair/lanl_scientific_agent.git
+
+pip install git+ssh://git@gitlab.lanl.gov/science-fair/lanl_scientific_agent.git
 ```
 
 With uv:
 ```console
-uv add git+https://gitlab.lanl.gov/science-fair/lanl_scientific_agent.git
+uv add git+ssh://git@gitlab.lanl.gov/science-fair/lanl_scientific_agent.git
 ```
 
 ## How to use this code
