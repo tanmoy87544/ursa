@@ -1,0 +1,42 @@
+[project]
+name = "oppenai"
+version = "0.1.0"
+description = "Agents for science at LANL"
+readme = "README.md"
+authors = [
+    { name = "Mike Grosskopf", email = "mikegros@lanl.gov" },
+    { name = "Rahul Somasundaram", email = "rsomasundaram@lanl.gov" },
+    { name = "Arthur Lui", email = "alui@lanl.gov" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "duckduckgo-search>=8.0.1",
+    "langchain>=0.3.22",
+    "langchain-community>=0.3.20",
+    "langchain-openai>=0.3.12",
+    "langgraph>=0.3.25",
+]
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.ruff]
+line-length = 80
+
+[tool.ruff.lint]
+ignore = ["D100"]
+extend-select = ["I", "W505"] # "D"
+extend-unsafe-fixes = ["F401"]
+pydocstyle.convention = "numpy"
+pycodestyle.max-doc-length = 80
+
+# Ignore test file documentation linting.
+[tool.ruff.lint.extend-per-file-ignores]
+"tests/**/*.py" = ["D"]
+
+[dependency-groups]
+dev = [
+    "notebook>=7.3.3",
+    "scikit-optimize>=0.10.2",
+]
