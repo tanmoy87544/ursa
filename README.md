@@ -8,7 +8,6 @@ requirements.txt is the file that results from pip freeze on the environment I h
 It may have a few extra packages from testing and examples, but it should provide a working environment.
 
 ## Installation
-```
 With pip:
 ```console
 pip install git+https://gitlab.lanl.gov/science-fair/lanl_scientific_agent.git
