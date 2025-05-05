@@ -1,14 +1,12 @@
+import sys
+
+from langchain_community.chat_models import ChatLiteLLM
 from langchain_core.messages import HumanMessage
-from langchain_ollama.chat_models import ChatOllama
-from langchain_openai import ChatOpenAI
 from pypdf import PdfReader
 
 from oppenai.agents import (
     ExecutionAgent,
-    HypothesizerAgent,
-    HypothesizerState,
     PlanningAgent,
-    ResearchAgent,
 )
 from oppenai.prompt_library.planning_prompts import (
     detailed_planner_prompt,
@@ -29,18 +27,16 @@ The following is a published paper about determinantal point processes.
 """
 
 
-def main():
+def main(mode: str):
     """Run a simple example of the scientific agent."""
     try:
-        model = ChatOpenAI(
-            model="o3-mini", max_tokens=20000, timeout=None, max_retries=2
+        model = ChatLiteLLM(
+            model="openai/o3-mini"
+            if mode == "prod"
+            else "ollama_chat/llama3.1:8b",
+            max_tokens=20000 if mode == "prod" else 4000,
+            max_retries=2,
         )
-        # model = ChatOllama(
-        #     model       = "llama3.1:8b",
-        #     max_tokens  = 4000,
-        #     timeout     = None,
-        #     max_retries = 2
-        # )
 
         print(f"\nSolving problem: {problem_definition}\n")
 
@@ -104,7 +100,7 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    main(sys.argv[-1])
 
 
 # execute_string   = "Flesh out the details of this step and report results for the executor of the next step. Do not use placeholders but fully carry out each step."

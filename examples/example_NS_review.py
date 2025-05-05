@@ -1,5 +1,7 @@
+import sys
+
+from langchain_community.chat_models import ChatLiteLLM
 from langchain_core.messages import HumanMessage
-from langchain_openai import ChatOpenAI
 
 from oppenai.agents import LiteratureAgent
 
@@ -11,8 +13,10 @@ def main():
         problem = """ 
         Browse the arxiv literature and provide a summary of the experimental constraints on the neutron star radius. 
         """
-        model = ChatOpenAI(
-            model="o3-mini", max_tokens=50000, timeout=None, max_retries=2
+        model = ChatLiteLLM(
+            model="openai/o3-mini",
+            max_tokens=50000,
+            max_retries=2,
         )
 
         init = {"messages": [HumanMessage(content=problem)]}

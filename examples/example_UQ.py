@@ -1,14 +1,7 @@
-# from oppenai.agent.execution_agent import ExecutionAgent
+from langchain_community.chat_models import ChatLiteLLM
 from langchain_core.messages import HumanMessage
-from langchain_ollama.chat_models import ChatOllama
-from langchain_openai import ChatOpenAI
 
-from oppenai.agents import (
-    ExecutionAgent,
-    HypothesizerAgent,
-    HypothesizerState,
-    ResearchAgent,
-)
+from oppenai.agents import ExecutionAgent, ResearchAgent
 
 
 def main():
@@ -23,27 +16,18 @@ def main():
          - Summarize the example
          - Suggest paths for using this package for science problems in the Department of Energy
         """
-        model_o4 = ChatOpenAI(
-            model="o4-mini", max_tokens=30000, timeout=None, max_retries=2
+        model_o4 = ChatLiteLLM(
+            model="openai/o4-mini", max_tokens=30000, max_retries=2
         )
-        model_o3 = ChatOpenAI(
-            model="o3", max_tokens=20000, timeout=None, max_retries=2
+        model_o3 = ChatLiteLLM(
+            model="openai/o3", max_tokens=20000, max_retries=2
         )
-        # model = ChatOllama(
-        #     model       = "llama3.1:8b",
-        #     max_tokens  = 4000,
-        #     timeout     = None,
-        #     max_retries = 2
-        # )
-
-        init = {"messages": [HumanMessage(content=problem)]}
 
         print(f"\nSolving problem: {problem}\n")
 
         # Initialize the agents
         researcher = ResearchAgent(llm=model_o4)
         executor = ExecutionAgent(llm=model_o3)
-        hypothesizer = HypothesizerAgent(llm=model_o4)
 
         # Solve the problem
         inputs = {"messages": [HumanMessage(content=problem)]}

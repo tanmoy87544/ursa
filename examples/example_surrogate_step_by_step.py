@@ -1,6 +1,5 @@
+from langchain_community.chat_models import ChatLiteLLM
 from langchain_core.messages import HumanMessage
-from langchain_ollama.chat_models import ChatOllama
-from langchain_openai import ChatOpenAI
 
 from oppenai.agents import ExecutionAgent, PlanningAgent
 
@@ -21,16 +20,9 @@ def main():
     queried to solve the problem step by step.
     """
     try:
-        model = ChatOpenAI(
-            model="o3-mini", max_tokens=50000, timeout=None, max_retries=2
+        model = ChatLiteLLM(
+            model="openai/o3-mini", max_tokens=50000, max_retries=2
         )
-        # model = ChatOllama(
-        #     model       = "llama3.1:8b",
-        #     max_tokens  = 4000,
-        #     timeout     = None,
-        #     max_retries = 2
-        # )
-
         init = {"messages": [HumanMessage(content=problem)]}
 
         print(f"\nSolving problem: {problem}\n")

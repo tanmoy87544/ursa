@@ -7,6 +7,7 @@ from typing import Annotated, Any, List, Optional
 import requests
 from bs4 import BeautifulSoup
 from langchain_community.tools import DuckDuckGoSearchResults
+from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage
 from langchain_core.tools import tool
 from langchain_openai import ChatOpenAI
@@ -48,7 +49,9 @@ class ResearchState(TypedDict):
 
 
 class ResearchAgent(BaseAgent):
-    def __init__(self, llm="openai/gpt-4o-mini", *args, **kwargs):
+    def __init__(
+        self, llm: str | BaseChatModel = "openai/gpt-4o-mini", **kwargs
+    ):
         super().__init__(llm, **kwargs)
         self.research_prompt = research_prompt
         self.reflection_prompt = reflection_prompt

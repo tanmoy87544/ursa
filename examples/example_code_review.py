@@ -1,4 +1,5 @@
 import os
+import sys
 
 from langchain_community.chat_models import ChatLiteLLM
 
@@ -20,19 +21,15 @@ Write and execute a python file to:
 """
 
 
-def main():
+def main(mode: str):
     try:
         model_o3 = ChatLiteLLM(
-            model="openai/o3-mini",
-            max_tokens=40000,
+            model="openai/o3-mini"
+            if mode == "prod"
+            else "ollama_chat/llama3.1:8b",
+            max_tokens=40000 if mode == "prod" else 4000,
             max_retries=2,
         )
-        # model = ChatOllama(
-        #     model       = "llama3.1:8b",
-        #     max_tokens  = 4000,
-        #     timeout     = None,
-        #     max_retries = 2
-        # )
 
         code_review_agent = CodeReviewAgent(llm=model_o3)
 
@@ -65,4 +62,4 @@ def main():
 
 
 if __name__ == "__main__":
-    print(main())
+    print(main(sys.argv[-1]))

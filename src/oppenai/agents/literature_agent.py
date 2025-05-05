@@ -3,6 +3,7 @@ from typing import Annotated
 
 from langchain_community.tools.arxiv.tool import ArxivQueryRun
 from langchain_community.utilities.arxiv import ArxivAPIWrapper
+from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import HumanMessage, SystemMessage
 
 # from langchain_core.tools import tool
@@ -23,7 +24,9 @@ class LiteratureState(TypedDict):
 
 
 class LiteratureAgent(BaseAgent):
-    def __init__(self, llm="openai/gpt-4o-mini", **kwargs):
+    def __init__(
+        self, llm: str | BaseChatModel = "openai/gpt-4o-mini", **kwargs
+    ):
         super().__init__(llm, **kwargs)
         self.search_prompt = search_prompt
         self.summarize_prompt = summarize_prompt

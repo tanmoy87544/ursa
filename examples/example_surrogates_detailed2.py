@@ -1,13 +1,9 @@
+from langchain_community.chat_models import ChatLiteLLM
 from langchain_core.messages import HumanMessage
-from langchain_ollama.chat_models import ChatOllama
-from langchain_openai import ChatOpenAI
 
 from oppenai.agents import (
     ExecutionAgent,
-    HypothesizerAgent,
-    HypothesizerState,
     PlanningAgent,
-    ResearchAgent,
 )
 from oppenai.prompt_library.planning_prompts import (
     detailed_planner_prompt,
@@ -31,15 +27,11 @@ Write and execute a python file to:
 def main():
     """Run a simple example of the scientific agent."""
     try:
-        model = ChatOpenAI(
-            model="o3-mini", max_tokens=20000, timeout=None, max_retries=2
+        model = ChatLiteLLM(
+            model="openai/o3-mini",
+            max_tokens=20000,
+            max_retries=2,
         )
-        # model = ChatOllama(
-        #     model       = "llama3.1:8b",
-        #     max_tokens  = 4000,
-        #     timeout     = None,
-        #     max_retries = 2
-        # )
 
         print(f"\nSolving problem: {problem_definition}\n")
 
