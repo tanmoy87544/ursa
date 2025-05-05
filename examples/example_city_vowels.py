@@ -1,58 +1,56 @@
 import sys
-sys.path.append("../../.")
+from typing import Literal
 
-from lanl_scientific_agent.agents import ExecutionAgent, PlanningAgent
-from langchain_core.messages      import HumanMessage
-from langchain_openai             import ChatOpenAI
-from langchain_ollama.chat_models import ChatOllama
+from langchain_community.chat_models import ChatLiteLLM
+from langchain_core.messages import HumanMessage
 
-def main():
+from oppenai.agents import ExecutionAgent, PlanningAgent
+
+
+def main(mode: str):
     """Run a simple example of an agent."""
     try:
         # Define a simple problem
         problem = "Find a city with as least 10 vowels in its name."
-        model = ChatOpenAI(
-            model       = "o3-mini",
-            max_tokens  = 10000,
-            timeout     = None,
-            max_retries = 2)
-        # model = ChatOllama(
-        #     model       = "llama3.1:8b",
-        #     max_tokens  = 4000,
-        #     timeout     = None,
-        #     max_retries = 2
-        # )
-        
+        model = ChatLiteLLM(
+            model="openai/o3-mini"
+            if mode == "prod"
+            else "ollama_chat/llama3.1:8b",
+            max_tokens=10000 if mode == "prod" else 4000,
+            max_retries=2,
+        )
         init = {"messages": [HumanMessage(content=problem)]}
-        
+
         print(f"\nSolving problem: {problem}\n")
-        
+
         # Initialize the agent
-        planner  = PlanningAgent(llm=model)
+        planner = PlanningAgent(llm=model)
         executor = ExecutionAgent(llm=model)
-        
+
         # Solve the problem
         planning_output = planner.action.invoke(init)
         print(planning_output["messages"][-1].content)
         planning_output["workspace"] = "workspace_cityVowels"
-        final_results   = executor.action.invoke(planning_output)
+        final_results = executor.action.invoke(planning_output)
         for x in final_results["messages"]:
             print(x.content)
         # print(final_results["messages"][-1].content)
-                
+
         return final_results["messages"][-1].content
-    
+
     except Exception as e:
         print(f"Error in example: {str(e)}")
         import traceback
+
         traceback.print_exc()
         return {"error": str(e)}
 
+
 if __name__ == "__main__":
-    final_output = main()
-    print("="*80)
-    print("="*80)
-    print("="*80)
+    final_output = main(mode=sys.argv[-1])  # dev or prod
+    print("=" * 80)
+    print("=" * 80)
+    print("=" * 80)
     print(final_output)
 
 # Solving problem: Find a city with as least 10 vowels in its name.
@@ -145,39 +143,39 @@ if __name__ == "__main__":
 # Using these steps, one can confidently solve the problem. A well-known example is the Welsh town “Llanfair­pwllgwyngyll­gogery­chwyrn­drobwll­llan­tysilio­gogo­goch”, whose full name contains many vowels (well over 10 in total).
 # Below is my detailed evaluation of each step:
 
-# Step 1: Understand the Problem Requirements  
-# • Clarity: The step clearly explains that you need to understand what “at least 10 vowels” means. It specifically mentions considering whether only the five standard vowels count and whether accented vowels should be included.  
-# • Completeness: This step adequately addresses the key condition and ensures you understand it before proceeding.  
-# • Relevance: The step is essential to prevent ambiguity later in the process.  
-# • Feasibility: It is fully achievable through a careful reading of the problem.  
+# Step 1: Understand the Problem Requirements
+# • Clarity: The step clearly explains that you need to understand what “at least 10 vowels” means. It specifically mentions considering whether only the five standard vowels count and whether accented vowels should be included.
+# • Completeness: This step adequately addresses the key condition and ensures you understand it before proceeding.
+# • Relevance: The step is essential to prevent ambiguity later in the process.
+# • Feasibility: It is fully achievable through a careful reading of the problem.
 # • Efficiency: This step is both necessary and efficient; no changes needed.
 
-# Step 2: Brainstorm Candidate Cities  
-# • Clarity: The description is clear in suggesting to consider cities with longer or unusual names.  
-# • Completeness: The inclusion of examples like the full ceremonial name of Bangkok and the Welsh town provides a good basis; however, you might also add the possibility of doing online research if personal knowledge is insufficient.  
-# • Relevance: All suggestions are relevant as they might yield cities fulfilling the vowel count requirement.  
-# • Feasibility: Brainstorming is a straightforward step and is feasible with available resources.  
+# Step 2: Brainstorm Candidate Cities
+# • Clarity: The description is clear in suggesting to consider cities with longer or unusual names.
+# • Completeness: The inclusion of examples like the full ceremonial name of Bangkok and the Welsh town provides a good basis; however, you might also add the possibility of doing online research if personal knowledge is insufficient.
+# • Relevance: All suggestions are relevant as they might yield cities fulfilling the vowel count requirement.
+# • Feasibility: Brainstorming is a straightforward step and is feasible with available resources.
 # • Efficiency: The step is efficient but could be improved slightly by explicitly suggesting verifying the candidate's vowel counts as soon as ideas are generated.
 
-# Step 3: Count the Vowels in a Candidate City Name  
-# • Clarity: The step clearly instructs to count the vowels manually or using code.  
-# • Completeness: It covers both manual and automated methods to ensure accuracy.  
-# • Relevance: This is a necessary step as it directly addresses the problem requirement.  
-# • Feasibility: This is realistic and achievable with basic tools or even a simple programming script.  
+# Step 3: Count the Vowels in a Candidate City Name
+# • Clarity: The step clearly instructs to count the vowels manually or using code.
+# • Completeness: It covers both manual and automated methods to ensure accuracy.
+# • Relevance: This is a necessary step as it directly addresses the problem requirement.
+# • Feasibility: This is realistic and achievable with basic tools or even a simple programming script.
 # • Efficiency: The process is efficient. There is no need to combine this step with another unless you prefer to integrate it into a verification process.
 
-# Step 4: Verify the Candidate Meets the Criteria  
-# • Clarity: The step explains how to verify if the candidate city qualifies by checking the count.  
-# • Completeness: It sufficiently covers the process of re-evaluating candidates if necessary.  
-# • Relevance: This step is directly related to ensuring that the chosen city meets the problem’s condition.  
-# • Feasibility: The check is straightforward and easily executed.  
+# Step 4: Verify the Candidate Meets the Criteria
+# • Clarity: The step explains how to verify if the candidate city qualifies by checking the count.
+# • Completeness: It sufficiently covers the process of re-evaluating candidates if necessary.
+# • Relevance: This step is directly related to ensuring that the chosen city meets the problem’s condition.
+# • Feasibility: The check is straightforward and easily executed.
 # • Efficiency: The instructions are clear and optimal as part of the iterative process; no revisions are needed.
 
-# Step 5: Report the Answer with Explanation  
-# • Clarity: The step clearly describes how to report the final answer and why the selected city qualifies.  
-# • Completeness: It successfully wraps up the procedure by summarizing findings and providing a reasoned explanation.  
-# • Relevance: Reporting the final answer is essential for the solution’s completeness.  
-# • Feasibility: This final step is entirely feasible with the results from previous steps.  
+# Step 5: Report the Answer with Explanation
+# • Clarity: The step clearly describes how to report the final answer and why the selected city qualifies.
+# • Completeness: It successfully wraps up the procedure by summarizing findings and providing a reasoned explanation.
+# • Relevance: Reporting the final answer is essential for the solution’s completeness.
+# • Feasibility: This final step is entirely feasible with the results from previous steps.
 # • Efficiency: The step is concise and accomplishes the goal of clear presentation.
 
 # Overall, the proposed steps are clear, complete, relevant, feasible, and efficient. There are no unnecessary steps, and each part of the process directly contributes to solving the problem. If desired, you might incorporate a brief reminder to conduct online research when brainstorming candidate cities in Step 2, but this is a minor suggestion rather than a necessary revision.
@@ -252,6 +250,6 @@ if __name__ == "__main__":
 
 # Final Answer: One example of a city with at least 10 vowels in its name is "Llanfairpwllgwyngyllgogerychwyrndrobwllllantysiliogogogoch".
 # Summary:
-# The solution involves a five-step process. First, the problem requirements are interpreted by defining vowels as A, E, I, O, U (in both cases). Next, candidate cities are brainstormed, including lengthy names like the Welsh town "Llanfairpwllgwyngyllgogerychwyrndrobwllllantysiliogogogoch." Then, a Python script is used to count the vowels in this candidate name. The script confirms that the city name has well over 10 vowels. Finally, the candidate is validated and reported as meeting the criteria. 
+# The solution involves a five-step process. First, the problem requirements are interpreted by defining vowels as A, E, I, O, U (in both cases). Next, candidate cities are brainstormed, including lengthy names like the Welsh town "Llanfairpwllgwyngyllgogerychwyrndrobwllllantysiliogogogoch." Then, a Python script is used to count the vowels in this candidate name. The script confirms that the city name has well over 10 vowels. Finally, the candidate is validated and reported as meeting the criteria.
 
 # Final Answer: "Llanfairpwllgwyngyllgogerychwyrndrobwllllantysiliogogogoch" is an example of a city with at least 10 vowels in its name.

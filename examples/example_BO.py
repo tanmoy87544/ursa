@@ -1,10 +1,12 @@
+import sys
+
 from langchain_community.chat_models import ChatLiteLLM
 from langchain_core.messages import HumanMessage
 
 from oppenai.agents import ExecutionAgent
 
 
-def main():
+def main(mode: str):
     """Run a simple example of an agent."""
     try:
         # Define a simple problem
@@ -17,8 +19,9 @@ def main():
         """
 
         model = ChatLiteLLM(
-            # model="openai/o3-mini",
-            model="ollama_chat/llama3.1:8b",
+            model="openai/o3-mini"
+            if mode == "prod"
+            else "ollama_chat/llama3.1:8b",
             max_tokens=50000,
             max_retries=2,
         )
@@ -49,4 +52,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    main(mode=sys.argv[-1])  # dev or prod
