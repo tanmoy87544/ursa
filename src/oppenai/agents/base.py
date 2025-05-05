@@ -14,7 +14,7 @@ class BaseAgent:
             case str():
                 self.llm_provider, self.llm_model = llm.split("/")
                 self.llm = ChatLiteLLM(
-                    model=self.llm_model,
+                    model=llm,
                     max_tokens=kwargs.pop("max_tokens", 10000),
                     max_retries=kwargs.pop("max_retries", 2),
                     **kwargs,
