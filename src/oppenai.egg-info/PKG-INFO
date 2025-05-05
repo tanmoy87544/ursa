@@ -5,11 +5,13 @@ Summary: Agents for science at LANL
 Author-email: Mike Grosskopf <mikegros@lanl.gov>, Rahul Somasundaram <rsomasundaram@lanl.gov>, Arthur Lui <alui@lanl.gov>
 Requires-Python: >=3.12
 Description-Content-Type: text/markdown
+Requires-Dist: arxiv>=2.2.0
 Requires-Dist: duckduckgo-search>=8.0.1
 Requires-Dist: langchain>=0.3.22
 Requires-Dist: langchain-community>=0.3.20
 Requires-Dist: langchain-openai>=0.3.12
 Requires-Dist: langgraph>=0.3.25
+Requires-Dist: litellm>=1.68.0
 
 # OppenAI - The LANL Scientific Agent
 

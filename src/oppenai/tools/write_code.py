@@ -1,16 +1,17 @@
 import os
 
-from langchain_core.tools    import tool
+from langchain_core.tools import tool
+
 
 @tool
 def write_python(code: str, filename: str, workspace_dir: str):
     """
     Writes code to a file in the given workspace.
-    
+
     Args:
         code: The code to write
         filename: the filename to write
-        
+
     Returns:
         File writing status: string
     """
@@ -32,9 +33,9 @@ def write_python(code: str, filename: str, workspace_dir: str):
         with open(code_file, "w") as f:
             f.write(code)
         print(f"Written code to file: {code_file}")
-        
+
         return f"File {filename} written successfully."
-        
+
     except Exception as e:
         print(f"Error generating code: {str(e)}")
         # Return minimal code that prints the error

@@ -1,6 +1,5 @@
+from langchain_community.chat_models import ChatLiteLLM
 from langchain_core.messages import HumanMessage
-from langchain_ollama.chat_models import ChatOllama
-from langchain_openai import ChatOpenAI
 
 from oppenai.agents import ExecutionAgent
 
@@ -16,17 +15,13 @@ def main():
                 and sequentially select points until the function is optimized. 
             Carry out the optimization and report the results.
         """
-        use_openai = True
 
-        if use_openai:
-            model = ChatOpenAI(
-                model="o3-mini",
-                max_completion_tokens=50000,
-                timeout=None,
-                max_retries=2,
-            )
-        else:
-            model = ChatOllama(model="llama3.1:8b")
+        model = ChatLiteLLM(
+            model="openai/o3-mini",
+            # model="ollama_chat/llama3.1:8b",
+            max_tokens=50000,
+            max_retries=2,
+        )
 
         init = {
             "messages": [HumanMessage(content=problem)],
