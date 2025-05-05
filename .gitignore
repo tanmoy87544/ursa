@@ -3,3 +3,16 @@
 *.csv
 iteration*txt
 *.swp
+
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+*.sql
+
+# Virtual environments
+.venv/
+workspace/

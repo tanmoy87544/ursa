@@ -16,15 +16,17 @@ def main():
                 and sequentially select points until the function is optimized. 
             Carry out the optimization and report the results.
         """
-        model = ChatOpenAI(
-            model="o3-mini", max_tokens=50000, timeout=None, max_retries=2
-        )
-        # model = ChatOllama(
-        #     model       = "llama3.1:8b",
-        #     max_tokens  = 4000,
-        #     timeout     = None,
-        #     max_retries = 2
-        # )
+        use_openai = True
+
+        if use_openai:
+            model = ChatOpenAI(
+                model="o3-mini",
+                max_completion_tokens=50000,
+                timeout=None,
+                max_retries=2,
+            )
+        else:
+            model = ChatOllama(model="llama3.1:8b")
 
         init = {
             "messages": [HumanMessage(content=problem)],

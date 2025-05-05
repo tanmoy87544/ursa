@@ -37,6 +37,7 @@ pycodestyle.max-doc-length = 80
 
 [dependency-groups]
 dev = [
+    "langchain-ollama>=0.3.2",
     "notebook>=7.3.3",
     "scikit-optimize>=0.10.2",
 ]
