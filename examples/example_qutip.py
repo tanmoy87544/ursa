@@ -1,14 +1,13 @@
-import sys
-sys.path.append("../../.")
-
-from lanl_scientific_agent.agents import ExecutionAgent, PlanningAgent
-from langchain_core.messages      import HumanMessage
-from langchain_openai             import ChatOpenAI
+from langchain_core.messages import HumanMessage
 from langchain_ollama.chat_models import ChatOllama
+from langchain_openai import ChatOpenAI
 
-from lanl_scientific_agent.prompt_library.planning_prompts import detailed_planner_prompt
+from oppenai.agents import ExecutionAgent, PlanningAgent
+from oppenai.prompt_library.planning_prompts import (
+    detailed_planner_prompt,
+)
 
-problem = '''
+problem = """
 Design, run and visualize the effects of the counter-rotating states in the quantum Rabi model using the QuTiP
 python package. Compare with the Rotating wave approximation.
 
@@ -19,42 +18,40 @@ Write a python file to:
   - Write a pedogogical description of the example, its motivation, and the results. Define technical terms.
 
 Then create a webpage to present the output in a clear and engaging manner. 
-'''
+"""
 
 
 def main():
     """
-        Run an example where a planning agent generates a multistep plan and the execution agent is
-        queried to solve the problem step by step.
+    Run an example where a planning agent generates a multistep plan and the execution agent is
+    queried to solve the problem step by step.
     """
     try:
         model = ChatOpenAI(
-            model       = "o1",
-            max_tokens  = 20000,
-            timeout     = None,
-            max_retries = 2)
+            model="o1", max_tokens=20000, timeout=None, max_retries=2
+        )
         # model = ChatOllama(
         #     model       = "llama3.1:8b",
         #     max_tokens  = 4000,
         #     timeout     = None,
         #     max_retries = 2
         # )
-        
+
         init = {"messages": [HumanMessage(content=problem)]}
-        
+
         print(f"\nSolving problem: {problem}\n")
-        
+
         # Initialize the agent
-        planner  = PlanningAgent(llm=model)
+        planner = PlanningAgent(llm=model)
         executor = ExecutionAgent(llm=model)
-        
+
         # Solve the problem
         planning_output = planner.action.invoke(init)
         print(planning_output["messages"][-1].content)
-        last_step_string   = "This is the first step."
+        last_step_string = "This is the first step."
         for x in planning_output["plan_steps"]:
-            plan_string     = str(x)
-            execute_string      = """
+            plan_string = str(x)
+            execute_string = """
             Execute this step and report results for the executor of the next step. 
             Do not use placeholders. 
             Run commands to execute code generated for the step if applicable.
@@ -67,22 +64,30 @@ def main():
 
                 {execute_string}
             """
-            final_results       = executor.action.invoke({"messages": [HumanMessage(content=step_prompt)], "workspace":"workspace_qutip"},{"recursion_limit": 999999})
+            final_results = executor.action.invoke(
+                {
+                    "messages": [HumanMessage(content=step_prompt)],
+                    "workspace": "workspace_qutip",
+                },
+                {"recursion_limit": 999999},
+            )
             last_step_string = final_results["messages"][-1].content
             print(last_step_string)
-                
+
         return final_results["messages"][-1].content
-    
+
     except Exception as e:
         print(f"Error in example: {str(e)}")
         import traceback
+
         traceback.print_exc()
         return {"error": str(e)}
+
 
 if __name__ == "__main__":
     main()
 
-# Solving problem: 
+# Solving problem:
 # Design, run and visualize the effects of the counter-rotating states in the quantum Rabi model using the QuTiP
 # python package. Compare with the Rotating wave approximation.
 
@@ -92,7 +97,7 @@ if __name__ == "__main__":
 #   - Visualize the results and create outputs for future website visualization.
 #   - Write a pedogogical description of the example, its motivation, and the results. Define technical terms.
 
-# Then create a webpage to present the output in a clear and engaging manner. 
+# Then create a webpage to present the output in a clear and engaging manner.
 
 
 # [
@@ -211,21 +216,21 @@ if __name__ == "__main__":
 # ]
 # Below is a concise summary of the conversation and the output for the current step:
 
-# • The quantum Rabi model includes rotating and counter-rotating terms, which affect system behavior at higher coupling strengths.  
-# • Goal: Compare the quantum Rabi model (including counter-rotating terms) to its rotating wave approximation (RWA) and illustrate differences in energy levels and dynamics.  
-# • Objectives:  
-#   – Set up both models (full and RWA) in QuTiP.  
-#   – Vary parameters such as qubit frequency (ω_q), field frequency (ω_c), coupling strength (g), and time scales.  
-#   – Run simulations and visualize results (e.g., energy spectra, time evolution).  
-#   – Provide a pedagogical explanation and final website presentation.  
-# • Key parameters identified: ω_q, ω_c, g, detuning Δ, simulation time, time step, and initial states (often a ground-state qubit and field in Fock/coherent states).  
-# • Conclusion: The groundwork is set for coding the Hamiltonians, running simulations, and generating visualizations for a thorough understanding of the impact of counter-rotating terms.  
+# • The quantum Rabi model includes rotating and counter-rotating terms, which affect system behavior at higher coupling strengths.
+# • Goal: Compare the quantum Rabi model (including counter-rotating terms) to its rotating wave approximation (RWA) and illustrate differences in energy levels and dynamics.
+# • Objectives:
+#   – Set up both models (full and RWA) in QuTiP.
+#   – Vary parameters such as qubit frequency (ω_q), field frequency (ω_c), coupling strength (g), and time scales.
+#   – Run simulations and visualize results (e.g., energy spectra, time evolution).
+#   – Provide a pedagogical explanation and final website presentation.
+# • Key parameters identified: ω_q, ω_c, g, detuning Δ, simulation time, time step, and initial states (often a ground-state qubit and field in Fock/coherent states).
+# • Conclusion: The groundwork is set for coding the Hamiltonians, running simulations, and generating visualizations for a thorough understanding of the impact of counter-rotating terms.
 # Writing filename  step_2_install_and_import.py
 # Written code to file: ./workspace/step_2_install_and_import.py
 # [PASSED] the safety check: python step_2_install_and_import.py
 # RUNNING:  python step_2_install_and_import.py
 # STDOUT:  Checking Python version...
-# Python version is 3.9.6 (default, Nov 10 2023, 13:38:27) 
+# Python version is 3.9.6 (default, Nov 10 2023, 13:38:27)
 # [Clang 15.0.0 (clang-1500.1.0.2.5)] (OK)
 # Checking for QuTiP installation...
 # QuTiP is already installed.
@@ -238,21 +243,21 @@ if __name__ == "__main__":
 # QuTiP is working correctly if the energies are [0, 1, 2, 3, 4] (or very close).
 # Step 2 completed successfully.
 
-# STDERR:  
+# STDERR:
 # Summary of Step 2:
 
-# • Confirmed Python 3.x is available (found Python 3.9.6).  
-# • Verified QuTiP is installed; no re-installation was required.  
-# • Successfully imported NumPy, Matplotlib, and QuTiP without errors.  
-# • Ran a simple harmonic oscillator test in QuTiP (N=5) to generate eigenenergies [0, 1, 2, 3, 4], confirming QuTiP functionality.  
+# • Confirmed Python 3.x is available (found Python 3.9.6).
+# • Verified QuTiP is installed; no re-installation was required.
+# • Successfully imported NumPy, Matplotlib, and QuTiP without errors.
+# • Ran a simple harmonic oscillator test in QuTiP (N=5) to generate eigenenergies [0, 1, 2, 3, 4], confirming QuTiP functionality.
 # • Environment is confirmed ready for subsequent steps.
 # Writing filename  step_3.py
 # Written code to file: ./workspace/step_3.py
 # [PASSED] the safety check: python step_3.py
 # RUNNING:  python step_3.py
-# STDOUT:  
+# STDOUT:
 # STDERR:  Traceback (most recent call last):
-#   File "/Users/mikegros/Projects/AIDI/lanl_scientific_agent/examples/workspace/step_3.py", line 24, in <module>
+#   File "/Users/mikegros/Projects/AIDI/oppenai/examples/workspace/step_3.py", line 24, in <module>
 #     H_full = wc * (a.dag() * a) + (0.5 * wa) * sz + g * (a + a.dag()) * (sp + sm)
 #   File "/Users/mikegros/envs/agentic/lib/python3.9/site-packages/qutip/core/qobj.py", line 90, in out
 #     raise ValueError(msg)
@@ -262,9 +267,9 @@ if __name__ == "__main__":
 # Written code to file: ./workspace/step_3.py
 # [PASSED] the safety check: python step_3.py
 # RUNNING:  python step_3.py
-# STDOUT:  
+# STDOUT:
 # --- Quantum Rabi Model Hamiltonians ---
-# Parameters: 
+# Parameters:
 #   wc = 1.0
 #   wa = 2.0
 #   g = 0.1
@@ -439,42 +444,42 @@ if __name__ == "__main__":
 #    0.          0.          0.          0.          0.3         0.
 #    0.          8.        ]]
 
-# STDERR:  
+# STDERR:
 # Step 3 Results Summary:
 
-# • Defined system parameters: wc=1.0, wa=2.0, g=0.1, Fock space dimension N=10.  
-# • Constructed field operators (annihilation, creation) in a space of dimension N=10.  
-# • Constructed the qubit operators (σz, σ+, σ–) in a space of dimension 2.  
-# • Used tensor products to combine field and qubit operators correctly into a 20-dimensional (10×2) Hilbert space.  
-# • Built both full Rabi Hamiltonian H_full and RWA Hamiltonian H_RWA using QuTiP.  
-# • Verified that printing the Hamiltonians shows the correct dimensions and structure (20×20 operators).  
-# • No errors once the tensor product structure was properly set (previous dimension mismatch was resolved).  
+# • Defined system parameters: wc=1.0, wa=2.0, g=0.1, Fock space dimension N=10.
+# • Constructed field operators (annihilation, creation) in a space of dimension N=10.
+# • Constructed the qubit operators (σz, σ+, σ–) in a space of dimension 2.
+# • Used tensor products to combine field and qubit operators correctly into a 20-dimensional (10×2) Hilbert space.
+# • Built both full Rabi Hamiltonian H_full and RWA Hamiltonian H_RWA using QuTiP.
+# • Verified that printing the Hamiltonians shows the correct dimensions and structure (20×20 operators).
+# • No errors once the tensor product structure was properly set (previous dimension mismatch was resolved).
 
 # All objectives for Step 3 have been met successfully.
 # Writing filename  step4_rabi_simulations.py
 # Written code to file: ./workspace/step4_rabi_simulations.py
 # [PASSED] the safety check: python step4_rabi_simulations.py
 # RUNNING:  python step4_rabi_simulations.py
-# STDOUT:  
+# STDOUT:
 # STDERR:  2025-04-10 10:54:01.515 Python[31596:797946] +[CATransaction synchronize] called within transaction
 # 2025-04-10 10:54:18.323 Python[31596:797946] +[CATransaction synchronize] called within transaction
 
 # Step 4 Results Summary:
 
-# • Successfully created and diagonalized both the full Rabi Hamiltonian (with counter-rotating terms) and the RWA Hamiltonian for a range of coupling strengths g ∈ [0,1]. This produces two arrays (energy_levels_full, energy_levels_rwa) that each contain the eigenenergies for several g values.  
-# • Confirmed storage of energy levels vs. coupling strength.  
-# • Performed time evolution at a chosen coupling strength g = 0.1 with an initial state of the field in the vacuum (|0⟩) and the qubit in the excited state (|1⟩).  
-# • Computed expectation values of σz and the photon number operator a†a as functions of time (mesolve). Stored these results (sz_expectation, photons_expectation) for later analysis.  
+# • Successfully created and diagonalized both the full Rabi Hamiltonian (with counter-rotating terms) and the RWA Hamiltonian for a range of coupling strengths g ∈ [0,1]. This produces two arrays (energy_levels_full, energy_levels_rwa) that each contain the eigenenergies for several g values.
+# • Confirmed storage of energy levels vs. coupling strength.
+# • Performed time evolution at a chosen coupling strength g = 0.1 with an initial state of the field in the vacuum (|0⟩) and the qubit in the excited state (|1⟩).
+# • Computed expectation values of σz and the photon number operator a†a as functions of time (mesolve). Stored these results (sz_expectation, photons_expectation) for later analysis.
 # • No errors occurred during the simulation. All objectives for Step 4 have been met successfully.
 # Writing filename  step_5_create_plots.py
 # Written code to file: ./workspace/step_5_create_plots.py
 # [PASSED] the safety check: python step_5_create_plots.py
 # RUNNING:  python step_5_create_plots.py
-# STDOUT:  
+# STDOUT:
 # STDERR:  Traceback (most recent call last):
-#   File "/Users/mikegros/Projects/AIDI/lanl_scientific_agent/examples/workspace/step_5_create_plots.py", line 111, in <module>
+#   File "/Users/mikegros/Projects/AIDI/oppenai/examples/workspace/step_5_create_plots.py", line 111, in <module>
 #     plot_time_evolution(times,
-#   File "/Users/mikegros/Projects/AIDI/lanl_scientific_agent/examples/workspace/step_5_create_plots.py", line 67, in plot_time_evolution
+#   File "/Users/mikegros/Projects/AIDI/oppenai/examples/workspace/step_5_create_plots.py", line 67, in plot_time_evolution
 #     plt.tight_layout()
 #   File "/Users/mikegros/envs/agentic/lib/python3.9/site-packages/matplotlib/pyplot.py", line 2599, in tight_layout
 #     gcf().tight_layout(pad=pad, h_pad=h_pad, w_pad=w_pad, rect=rect)
@@ -512,8 +517,8 @@ if __name__ == "__main__":
 #     box = self._parser.parse(s, fontset, fontsize, dpi)
 #   File "/Users/mikegros/envs/agentic/lib/python3.9/site-packages/matplotlib/_mathtext.py", line 2165, in parse
 #     raise ValueError("\n" + ParseException.explain(err, 0)) from None
-# ValueError: 
-# $\langle \sigma_z 
+# ValueError:
+# $\langle \sigma_z
 # angle$
 # ^
 # ParseException: Expected end of text, found '$'  (at char 0), (line:1, col:1)
@@ -528,16 +533,16 @@ if __name__ == "__main__":
 #   - rabi_rwa_photon_time_evolution.png
 
 
-# STDERR:  
+# STDERR:
 # Step 5 Results Summary:
 
-# • Generated three plots in PNG format, showing:  
-#   1. Energy levels vs. coupling strength (rabi_rwa_energy_comparison.png).  
-#   2. Time evolution of ⟨σz⟩ (rabi_rwa_sz_time_evolution.png).  
-#   3. Time evolution of photon number (rabi_rwa_photon_time_evolution.png).  
+# • Generated three plots in PNG format, showing:
+#   1. Energy levels vs. coupling strength (rabi_rwa_energy_comparison.png).
+#   2. Time evolution of ⟨σz⟩ (rabi_rwa_sz_time_evolution.png).
+#   3. Time evolution of photon number (rabi_rwa_photon_time_evolution.png).
 
-# • Each plot clearly compares the full Rabi model (with counter-rotating terms) to the RWA.  
-# • No errors occurred.  
+# • Each plot clearly compares the full Rabi model (with counter-rotating terms) to the RWA.
+# • No errors occurred.
 # • All objectives for Step 5 have been met, and files are now ready for inclusion on a webpage.
 # Below is a concise, clear text outlining the motivation, setup, and main findings for the quantum Rabi model simulations, followed by definitions of key technical terms.
 
@@ -545,30 +550,30 @@ if __name__ == "__main__":
 # PHYSICS BACKGROUND AND EXPLANATION
 # ────────────────────────────────────────────────────────────────────────────
 
-# 1. MOTIVATION AND OVERVIEW  
+# 1. MOTIVATION AND OVERVIEW
 # The quantum Rabi model describes the interaction between a two-level system (often referred to as a qubit, such as an atom with two energy levels) and a single quantized mode of an electromagnetic field (such as photons in a cavity). It is central to quantum optics and quantum information science because it encapsulates how a qubit can exchange energy with a photon field. A special approximation known as the Rotating Wave Approximation (RWA) simplifies the mathematics significantly by ignoring so-called “counter-rotating terms,” which typically have negligible effects under certain physical conditions (e.g., when the coupling strength is much smaller than the qubit and cavity frequencies). However, when the coupling becomes stronger or the timescales become longer, neglecting these terms is no longer valid, and the full Rabi model must be used.
 
 # Our goal in these simulations is to show how including (or neglecting) counter-rotating terms changes measurable quantities such as energy levels, expectation values of qubit observables (e.g., the z-component of the spin-like operator, σz), and photon number in the cavity mode. By running simulations and plotting these quantities, we can see the physical differences between the exact solution (the full Rabi model) and its approximate solution under the RWA.
 
-# 2. SETUP  
-# We have implemented two sets of simulations:  
-# • Full Rabi Model: Includes counter-rotating terms.  
+# 2. SETUP
+# We have implemented two sets of simulations:
+# • Full Rabi Model: Includes counter-rotating terms.
 # • RWA Model: Neglects counter-rotating terms.
 
-# Key parameters typically include:  
-# • Qubit Splitting (ωq): The energy difference between the qubit’s excited and ground states.  
-# • Cavity Frequency (ωc): The frequency of the single photonic field mode.  
+# Key parameters typically include:
+# • Qubit Splitting (ωq): The energy difference between the qubit’s excited and ground states.
+# • Cavity Frequency (ωc): The frequency of the single photonic field mode.
 # • Coupling Strength (g): The strength of interaction between the qubit and photon field.
 
 # We use QuTiP (Quantum Toolbox in Python) to construct Hamiltonians, run time evolutions, and compute observables like σz and photon number.
 
-# 3. MAIN FINDINGS  
-# From the plots of energy levels vs. coupling strength, we see that:  
-# • Under weak coupling (g ≪ ωc, ωq), the RWA captures most of the behavior.  
-# • As g becomes larger, the full Rabi model deviates substantially. The energies no longer match those predicted by the RWA.  
+# 3. MAIN FINDINGS
+# From the plots of energy levels vs. coupling strength, we see that:
+# • Under weak coupling (g ≪ ωc, ωq), the RWA captures most of the behavior.
+# • As g becomes larger, the full Rabi model deviates substantially. The energies no longer match those predicted by the RWA.
 
-# From the time evolution of ⟨σz⟩ and of photon number, we notice:  
-# • In the RWA, the qubit and field exchange excitations in a more predictable, sinusoidal manner.  
+# From the time evolution of ⟨σz⟩ and of photon number, we notice:
+# • In the RWA, the qubit and field exchange excitations in a more predictable, sinusoidal manner.
 # • With counter-rotating terms (full Rabi), we see more complex oscillations and faster exchanges of excitations, reflecting processes forbidden under the RWA (those that simultaneously create or annihilate excitations in both qubit and field).
 
 # These differences can become physically observable in ultra-strong coupling regimes, where devices such as superconducting qubits coupled to transmission lines or superconducting resonators push coupling strengths close to ωc or ωq.
@@ -579,8 +584,8 @@ if __name__ == "__main__":
 
 # • Qubit: A two-level quantum system. In the context of cavity quantum electrodynamics (QED), the qubit can be an actual two-level atom or an artificial two-level system (e.g., a superconducting qubit).
 
-# • Pauli Operators (σx, σy, σz): Operators acting on a two-level system. In their matrix representation, for example:  
-#   σz = |e⟩⟨e| – |g⟩⟨g|.  
+# • Pauli Operators (σx, σy, σz): Operators acting on a two-level system. In their matrix representation, for example:
+#   σz = |e⟩⟨e| – |g⟩⟨g|.
 # They obey the algebra of spin-1/2 operators.
 
 # • Jaynes–Cummings Model: A simplified version of the quantum Rabi model that only includes terms that conserve the total excitation number. This is effectively the Rabi model under the RWA.
@@ -598,11 +603,11 @@ if __name__ == "__main__":
 # Written code to file: ./workspace/index.html
 # SUMMARY OF THE MOST RECENT STEP
 
-# The seventh and final step involved designing a simple webpage (index.html) to showcase the quantum Rabi model simulations. The HTML layout provides: 
-# • An introduction to the Rabi model and the motivation for comparing the full model with its RWA counterpart.  
-# • A pedagogical explanation detailing the key physics, including rotating vs. counter-rotating terms.  
-# • Sections displaying sample plots (energy levels and time evolution) highlighting the differences between the two approaches.  
-# • A download link for the Python script (quantum_rabi_simulations.py) that generates the results using QuTiP.  
+# The seventh and final step involved designing a simple webpage (index.html) to showcase the quantum Rabi model simulations. The HTML layout provides:
+# • An introduction to the Rabi model and the motivation for comparing the full model with its RWA counterpart.
+# • A pedagogical explanation detailing the key physics, including rotating vs. counter-rotating terms.
+# • Sections displaying sample plots (energy levels and time evolution) highlighting the differences between the two approaches.
+# • A download link for the Python script (quantum_rabi_simulations.py) that generates the results using QuTiP.
 # • Key physical insights summarizing the importance of including counter-rotating terms in the ultra-strong coupling regime.
 
 # By placing the HTML file, the supporting images, and the Python script together, a reader can interact with explanations, see the figures, and easily run the simulations. This completes the final presentation step, providing a cohesive, browser-friendly format for sharing results and code with others.

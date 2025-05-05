@@ -41,5 +41,6 @@ pycodestyle.max-doc-length = 80
 dev = [
     "coolname>=2.2.0",
     "notebook>=7.3.3",
+    "pypdf>=5.4.0",
     "scikit-optimize>=0.10.2",
 ]

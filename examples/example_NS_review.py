@@ -1,9 +1,7 @@
-import sys
-sys.path.append("../../.")
+from langchain_core.messages import HumanMessage
+from langchain_openai import ChatOpenAI
 
-from lanl_scientific_agent.agents import LiteratureAgent
-from langchain_core.messages      import HumanMessage
-from langchain_openai             import ChatOpenAI
+from oppenai.agents import LiteratureAgent
 
 
 def main():
@@ -14,31 +12,31 @@ def main():
         Browse the arxiv literature and provide a summary of the experimental constraints on the neutron star radius. 
         """
         model = ChatOpenAI(
-            model       = "o3-mini",
-            max_tokens  = 50000,
-            timeout     = None,
-            max_retries = 2)
- 
-        
+            model="o3-mini", max_tokens=50000, timeout=None, max_retries=2
+        )
+
         init = {"messages": [HumanMessage(content=problem)]}
-                
+
         # Initialize the agent
         literature_agent = LiteratureAgent(llm=model)
 
-        
         # Solve the problem
-        final_results    = literature_agent.action.invoke({"messages": [HumanMessage(content=problem)]})
+        final_results = literature_agent.action.invoke(
+            {"messages": [HumanMessage(content=problem)]}
+        )
 
         for x in final_results["messages"]:
             print(x.content)
-            
+
         return final_results["messages"][-1].content
-    
+
     except Exception as e:
         print(f"Error in example: {str(e)}")
         import traceback
+
         traceback.print_exc()
         return {"error": str(e)}
+
 
 if __name__ == "__main__":
     main()

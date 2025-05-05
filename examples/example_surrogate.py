@@ -1,13 +1,10 @@
-import sys
-sys.path.append("../../.")
-
-from lanl_scientific_agent.agents import ExecutionAgent, PlanningAgent
-from langchain_core.messages      import HumanMessage
-from langchain_openai             import ChatOpenAI
+from langchain_core.messages import HumanMessage
 from langchain_ollama.chat_models import ChatOllama
+from langchain_openai import ChatOpenAI
 
+from oppenai.agents import ExecutionAgent, PlanningAgent
 
-problem = '''
+problem = """
 Look for a file called finished_cases.csv in your workspace. If you find it, it should contain a column named something like "log Yield".
 
 Write and execute a python file to:
@@ -15,47 +12,48 @@ Write and execute a python file to:
   - Split the data into a training and test set.
   - Fit a Gaussian process model with gpytorch to the training data where "log Yield" is the output and the other variables are inputs.
   - Assess the quality of fit by r-squared on the test set and iterate if the current model is not good enough.
-'''
+"""
+
 
 def main():
     """Run a simple example of an agent."""
     try:
         # Define a simple problem
         model = ChatOpenAI(
-            model       = "o3-mini",
-            max_tokens  = 10000,
-            timeout     = None,
-            max_retries = 2)
+            model="o3-mini", max_tokens=10000, timeout=None, max_retries=2
+        )
         # model = ChatOllama(
         #     model       = "llama3.1:8b",
         #     max_tokens  = 4000,
         #     timeout     = None,
         #     max_retries = 2
         # )
-        
+
         init = {"messages": [HumanMessage(content=problem)]}
-        
+
         print(f"\nSolving problem: {problem}\n")
-        
+
         # Initialize the agent
-        planner  = PlanningAgent(llm=model)
+        planner = PlanningAgent(llm=model)
         executor = ExecutionAgent(llm=model)
-        
+
         # Solve the problem
         planning_output = planner.action.invoke(init)
         print(planning_output["messages"][-1].content)
-        final_results   = executor.action.invoke(planning_output)
+        final_results = executor.action.invoke(planning_output)
         for x in final_results["messages"]:
             print(x.content)
         # print(final_results["messages"][-1].content)
-                
+
         return final_results["messages"][-1].content
-    
+
     except Exception as e:
         print(f"Error in example: {str(e)}")
         import traceback
+
         traceback.print_exc()
         return {"error": str(e)}
+
 
 if __name__ == "__main__":
     main()
@@ -158,7 +156,7 @@ if __name__ == "__main__":
 
 # Columns in the CSV file: ['logYield', 'DT', 'Inner Shell', 'Tamper', 'Foam', 'Ablator']
 #  and STDERR: Traceback (most recent call last):
-#   File "/Users/mikegros/Projects/AIDI/lanl_scientific_agent/examples/workspace/gp_model_training.py", line 29, in <module>
+#   File "/Users/mikegros/Projects/AIDI/oppenai/examples/workspace/gp_model_training.py", line 29, in <module>
 #     raise ValueError("No column resembling 'log Yield' found in the CSV header.")
 # ValueError: No column resembling 'log Yield' found in the CSV header.
 
@@ -185,8 +183,8 @@ if __name__ == "__main__":
 # <class 'pandas.core.frame.DataFrame'>
 # RangeIndex: 484 entries, 0 to 483
 # Data columns (total 6 columns):
-#  #   Column       Non-Null Count  Dtype  
-# ---  ------       --------------  -----  
+#  #   Column       Non-Null Count  Dtype
+# ---  ------       --------------  -----
 #  0   logYield     484 non-null    float64
 #  1   DT           484 non-null    float64
 #  2   Inner Shell  484 non-null    float64
@@ -260,11 +258,11 @@ if __name__ == "__main__":
 # There was also an optional scatter plot provided for visual diagnostics. Overall, the process correctly loads, preprocesses, trains, and evaluates a GP model with gpytorch.
 # The code executed successfully and met the objectives:
 
-# • Step 1 confirmed that "finished_cases.csv" exists and identified "logYield" as the target column (using normalization to handle naming variations).  
-# • Step 2 loaded the file into a pandas DataFrame, printed the head, info, and descriptive statistics, and checked for missing values. No missing values were found, and exploratory data analysis was performed.  
-# • Step 3 split the data into input features (all columns except "logYield") and the target, using train_test_split with reproducibility (random_state=42).  
-# • Step 4 converted the training data to PyTorch tensors, defined a GP regression model with a constant mean and RBF kernel, and trained it for 100 iterations while printing loss updates.  
-# • Step 5 switched the model to evaluation mode, computed test predictions, calculated an r-squared value of 0.887, and optionally produced a scatter plot for visual diagnostics.  
+# • Step 1 confirmed that "finished_cases.csv" exists and identified "logYield" as the target column (using normalization to handle naming variations).
+# • Step 2 loaded the file into a pandas DataFrame, printed the head, info, and descriptive statistics, and checked for missing values. No missing values were found, and exploratory data analysis was performed.
+# • Step 3 split the data into input features (all columns except "logYield") and the target, using train_test_split with reproducibility (random_state=42).
+# • Step 4 converted the training data to PyTorch tensors, defined a GP regression model with a constant mean and RBF kernel, and trained it for 100 iterations while printing loss updates.
+# • Step 5 switched the model to evaluation mode, computed test predictions, calculated an r-squared value of 0.887, and optionally produced a scatter plot for visual diagnostics.
 # • Overall, the model performance meets the expected criteria, and recommendations for further iterations have been noted if necessary.
 
 # This summary confirms that each step was properly implemented and executed with high performance.
