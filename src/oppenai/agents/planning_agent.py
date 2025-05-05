@@ -28,8 +28,8 @@ class PlanningState(TypedDict):
 
 
 class PlanningAgent(BaseAgent):
-    def __init__(self, llm="OpenAI/gpt-4o", *args, **kwargs):
-        super().__init__(llm, args, kwargs)
+    def __init__(self, llm="openai/gpt-4o-mini", *args, **kwargs):
+        super().__init__(llm, **kwargs)
         self.planner_prompt = planner_prompt
         self.formalize_prompt = formalize_prompt
         self.reflection_prompt = reflection_prompt

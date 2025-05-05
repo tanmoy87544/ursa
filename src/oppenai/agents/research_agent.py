@@ -42,13 +42,14 @@ class ResearchState(TypedDict):
     model: Any
 
 
-# Adding the model to the state clumsily so that all "read" sources arent in the context window. That eats a ton of tokens because each llm.invoke
-#     passes all the tokens of all the sources.
+# Adding the model to the state clumsily so that all "read" sources arent in the
+# context window. That eats a ton of tokens because each `llm.invoke` passes
+# all the tokens of all the sources.
 
 
 class ResearchAgent(BaseAgent):
-    def __init__(self, llm="OpenAI/gpt-4o", *args, **kwargs):
-        super().__init__(llm, args, kwargs)
+    def __init__(self, llm="openai/gpt-4o-mini", *args, **kwargs):
+        super().__init__(llm, **kwargs)
         self.research_prompt = research_prompt
         self.reflection_prompt = reflection_prompt
         self.tools = [search_tool, process_content]  # + cb_tools

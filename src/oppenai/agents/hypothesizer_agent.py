@@ -6,6 +6,7 @@ from datetime import datetime
 from typing import List, Literal, TypedDict
 
 from langchain_community.tools import DuckDuckGoSearchResults
+from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import HumanMessage, SystemMessage
 from langgraph.graph import END, StateGraph
 
@@ -40,8 +41,8 @@ class HypothesizerState(TypedDict):
 
 
 class HypothesizerAgent(BaseAgent):
-    def __init__(self, llm="OpenAI/o3-mini", *args, **kwargs):
-        super().__init__(llm, args, kwargs)
+    def __init__(self, llm: str | BaseChatModel = "openai/o3-mini", **kwargs):
+        super().__init__(llm, **kwargs)
         self.hypothesizer_prompt = hypothesizer_prompt
         self.critic_prompt = critic_prompt
         self.competitor_prompt = competitor_prompt

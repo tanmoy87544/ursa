@@ -23,8 +23,8 @@ class LiteratureState(TypedDict):
 
 
 class LiteratureAgent(BaseAgent):
-    def __init__(self, llm="OpenAI/gpt-4o", *args, **kwargs):
-        super().__init__(llm, args, kwargs)
+    def __init__(self, llm="openai/gpt-4o-mini", **kwargs):
+        super().__init__(llm, **kwargs)
         self.search_prompt = search_prompt
         self.summarize_prompt = summarize_prompt
         self.tools = [arxiv_tool]

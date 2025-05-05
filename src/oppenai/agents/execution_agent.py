@@ -9,6 +9,7 @@ from langchain_community.tools import (
     DuckDuckGoSearchResults,
     # TavilySearchResults,
 )
+from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage
 from langchain_core.tools import tool
 from langgraph.graph import END, START, StateGraph
@@ -35,8 +36,10 @@ class ExecutionState(TypedDict):
 
 
 class ExecutionAgent(BaseAgent):
-    def __init__(self, llm="OpenAI/gpt-4o", *args, **kwargs):
-        super().__init__(llm, args, kwargs)
+    def __init__(
+        self, llm: str | BaseChatModel = "openai/gpt-4o-mini", **kwargs
+    ):
+        super().__init__(llm, **kwargs)
         self.executor_prompt = executor_prompt
         self.summarize_prompt = summarize_prompt
         self.tools = [run_cmd, write_code, search_tool]

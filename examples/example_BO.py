@@ -17,8 +17,8 @@ def main():
         """
 
         model = ChatLiteLLM(
-            model="openai/o3-mini",
-            # model="ollama_chat/llama3.1:8b",
+            # model="openai/o3-mini",
+            model="ollama_chat/llama3.1:8b",
             max_tokens=50000,
             max_retries=2,
         )

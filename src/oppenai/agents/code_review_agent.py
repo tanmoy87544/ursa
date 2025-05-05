@@ -2,6 +2,7 @@ import os
 import subprocess
 from typing import Annotated, Literal
 
+from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.tools import tool
 from langgraph.graph import END, START, StateGraph
@@ -38,8 +39,10 @@ class CodeReviewState(TypedDict):
 
 
 class CodeReviewAgent(BaseAgent):
-    def __init__(self, llm="openai/gpt-4o", *args, **kwargs):
-        super().__init__(llm, args, kwargs)
+    def __init__(
+        self, llm: str | BaseChatModel = "openai/gpt-4o-mini", **kwargs
+    ):
+        super().__init__(llm, **kwargs)
         print("### WORK IN PROGRESS ###")
         print(
             "CODE REVIEW AGENT NOT YET FULLY IMPLEMENTED AND TESTED. BE AWARE THAT IT WILL LIKELY NOT WORK AS INTENDED YET."
@@ -101,7 +104,11 @@ class CodeReviewAgent(BaseAgent):
         if state["messages"][-1].tool_calls[0]["name"] == "run_cmd":
             query = state["messages"][-1].tool_calls[0]["args"]["query"]
             safety_check = self.llm.invoke(
-                "Assume commands to run python and Julia are safe because the files are from a trusted source. Answer only either [YES] or [NO]. Is this command safe to run: "
+                (
+                    "Assume commands to run python and Julia are safe because "
+                    "the files are from a trusted source. "
+                    "Answer only either [YES] or [NO]. Is this command safe to run: "
+                )
                 + query
             )
             if "[NO]" in safety_check.content:
