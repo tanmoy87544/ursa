@@ -34,6 +34,7 @@ def main():
         # Solve the problem
         planning_output = planner.action.invoke(init)
         print(planning_output["messages"][-1].content)
+        planning_output["workspace"] = "workspace_cityVowels"
         final_results   = executor.action.invoke(planning_output)
         for x in final_results["messages"]:
             print(x.content)

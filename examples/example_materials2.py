@@ -9,16 +9,16 @@ from langchain_ollama.chat_models import ChatOllama
 
 
 problem_definition = '''
-Developing materials that are able to stay brittle at low temperatures is a critical part of advancing space travel.
+Developing materials that are able to do not become brittle at low temperatures is a critical part of advancing space travel.
 
 High-entropy alloys have potential to develop metals that are not brittle in the cold temperatures of space.
 
-Hypothesize some metal combinations that may lead to useful alloys and identify the mixture weights for these metals for optimal alloys.
+Hypothesize high-entropy alloys and identify the mixture weights for these metals for optimal material properties.
 
 Your only tools for identifying the materials are:
     - Writing and executing python code.
     - Acquiring materials data from reputable online resources.
-        - Attempt to use freely available data that does not require an API KEY
+        - Your environment does have an API key for the Materials DB, so you can query information from it.
     - Installing and evaluating repuatable, openly available materials models. 
 
 You cannot perform any materials synthesis or experimental testing.
@@ -26,6 +26,8 @@ You cannot perform any materials synthesis or experimental testing.
 In the end we should have a list of high-entropy alloys that are not brittle at low temperature and a justification for this.
 
 No hypothetical examples! Obtain what you need to perform the actual analysis, execute the steps, and get come to a defensible conclusion. 
+
+Summarize your results in a webpage with interactive visualization.
 '''
 
 
@@ -50,14 +52,10 @@ def main():
         hypothesizer = HypothesizerAgent(llm  = model)
         planner      = PlanningAgent(llm      = model)
         executor     = ExecutionAgent(llm     = model)
-        researcher   = ResearchAgent(llm      = model)
-
-        inputs          = {"messages": [HumanMessage(content=problem_definition)]}
-        research_result = researcher.action.invoke(inputs)
 
         # Solve the problem
         initial_state = HypothesizerState(
-            question              = research_result["messages"][-1].content,
+            question              = problem_definition,
             question_search_query =                 "",
             current_iteration     =                  0,
             max_iterations        =                  4,
@@ -75,7 +73,7 @@ def main():
         execute_string   = "Execute this step and report results for the executor of the next step."
         for x in planning_output["plan_steps"]:
             plan_string      = str(x)
-            final_results    = executor.action.invoke({"messages": [HumanMessage(content=last_step_string + plan_string + execute_string)]},{"recursion_limit": 999999})
+            final_results    = executor.action.invoke({"messages": [HumanMessage(content=last_step_string + plan_string + execute_string)], "workspace":"workspace_materials2"},{"recursion_limit": 999999})
             last_step_string = final_results["messages"][-1].content
             print(last_step_string)
                 

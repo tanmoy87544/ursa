@@ -6,22 +6,32 @@ from langgraph.graph.message import add_messages
 from langchain_core.tools    import tool
 from langgraph.prebuilt      import ToolNode
 
+from langgraph.prebuilt      import InjectedState
 from langgraph.graph         import END, StateGraph, START
-from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
+from langchain_core.messages import HumanMessage, SystemMessage, AIMessage, ToolMessage
 
 from langchain_community.tools      import DuckDuckGoSearchResults
 from langchain_community.tools      import TavilySearchResults
+# from langchain_core.runnables.graph import MermaidDrawMethod
 
 import subprocess
+import coolname
 
 from .base                              import BaseAgent
 from ..prompt_library.execution_prompts import executor_prompt, summarize_prompt
 
-workspace_dir = "./workspace/"
-os.makedirs(workspace_dir, exist_ok=True)
+# --- ANSI color codes ---
+GREEN = "\033[92m"
+BLUE  = "\033[94m"
+RED   = "\033[91m"
+RESET = "\033[0m"
+BOLD  = "\033[1m"
 
 class ExecutionState(TypedDict):
     messages: Annotated[list, add_messages]
+    current_progress: str
+    code_files: list[str]
+    workspace: str
 
 class ExecutionAgent(BaseAgent):
     def __init__(self, llm = "OpenAI/gpt-4o", *args, **kwargs):
@@ -36,13 +46,19 @@ class ExecutionAgent(BaseAgent):
 
     # Define the function that calls the model
     def query_executor(self, state: ExecutionState) -> ExecutionState:
-        messages = state["messages"]
-        if type(state["messages"][0]) == SystemMessage:
-            state["messages"][0] = SystemMessage(content=self.executor_prompt)
+        new_state = state.copy()
+        if "workspace" not in new_state.keys():
+            new_state["workspace"] = coolname.generate_slug(2)
+            print(f"{RED}Creating the folder {BLUE}{BOLD}{new_state['workspace']}{RESET}{RED} for this project.{RESET}")
+        os.makedirs(new_state["workspace"], exist_ok=True)
+        
+        messages  = state["messages"]
+        if type(new_state["messages"][0]) == SystemMessage:
+            new_state["messages"][0] = SystemMessage(content=self.executor_prompt)
         else:
-            state["messages"]    = [SystemMessage(content=self.executor_prompt)] + state["messages"]
+            new_state["messages"]    = [SystemMessage(content=self.executor_prompt)] + state["messages"]
         response = self.llm.invoke(messages)
-        return {"messages": [response]}
+        return {"messages": [response], "workspace":new_state["workspace"]}
 
     # Define the function that calls the model
     def summarize(self, state: ExecutionState) -> ExecutionState:
@@ -52,17 +68,25 @@ class ExecutionAgent(BaseAgent):
 
     # Define the function that calls the model
     def safety_check(self, state: ExecutionState) -> ExecutionState:
+        new_state = state.copy()
         if state["messages"][-1].tool_calls[0]["name"] == "run_cmd":
             query        = state["messages"][-1].tool_calls[0]["args"]["query"]
             safety_check = self.llm.invoke("Assume commands to run python and Julia are safe because the files are from a trusted source. Answer only either [YES] or [NO]. Is this command safe to run: " + query)
             if "[NO]" in safety_check.content:
-                print("[WARNING]")
-                print("[WARNING] That command deemed unsafe and cannot be run: ", query, " --- ",safety_check)
-                print("[WARNING]")
-                return {"messages": ["[UNSAFE] That command deemed unsafe and cannot be run: "+ query]}
-            
-            print("[PASSED] the safety check: "+query)
-        return state
+                print(f"{RED}{BOLD} [WARNING] {RESET}")
+                print(f"{RED}{BOLD} [WARNING] That command deemed unsafe and cannot be run: {RESET}", query, " --- ",safety_check)
+                print(f"{RED}{BOLD} [WARNING] {RESET}")
+                return {"messages": [ToolMessage(content="[UNSAFE] That command deemed unsafe and cannot be run: "+ query, tool_call_id=state["messages"][-1].tool_calls[0]["id"])]}
+
+            print(f"{GREEN}[PASSED] the safety check: {RESET}"+query)
+        elif state["messages"][-1].tool_calls[0]["name"] == "write_code":
+            fn = state["messages"][-1].tool_calls[0]["args"].get("filename",None)
+            if "code_files" in new_state:
+                new_state["code_files"].append(fn)
+            else:
+                new_state["code_files"] = [fn]
+
+        return new_state
 
     def _initialize_agent(self):
         self.graph = StateGraph(ExecutionState)
@@ -98,21 +122,31 @@ class ExecutionAgent(BaseAgent):
         self.graph.add_edge("summarize",     END)
 
         self.action = self.graph.compile()
+        # self.action.get_graph().draw_mermaid_png(output_file_path="execution_agent_graph.png", draw_method=MermaidDrawMethod.PYPPETEER)
 
 @tool
-def run_cmd(query: str) -> str:
-    """Run command from commandline"""
-    
-    print("RUNNING: ", query)
-    process = subprocess.Popen(
-        query.split(" "),
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True,
-        cwd=workspace_dir
-    )
+def run_cmd(query: str, state: Annotated[dict, InjectedState]) -> str:
+    """
+    Run a commandline command from using the subprocess package in python
 
-    stdout, stderr = process.communicate(timeout=600)
+    Args:
+        query: commandline command to be run as a string given to the subprocess.run command.
+    """
+    workspace_dir = state["workspace"]
+    print("RUNNING: ", query)
+    try:
+        process = subprocess.Popen(
+            query.split(" "),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            cwd=workspace_dir
+        )
+
+        stdout, stderr = process.communicate(timeout=60000)
+    except KeyboardInterrupt:
+        print("Keyboard Interrupt of command: ", query)
+        stdout, stderr = "", "KeyboardInterrupt:"
 
     print("STDOUT: ", stdout)
     print("STDERR: ", stderr)
@@ -120,7 +154,7 @@ def run_cmd(query: str) -> str:
     return f"STDOUT: {stdout} and STDERR: {stderr}"
 
 @tool
-def write_code(code: str, filename: str):
+def write_code(code: str, filename: str, state: Annotated[dict, InjectedState]):
     """
     Writes python or Julia code to a file in the given workspace as requested.
     
@@ -131,6 +165,7 @@ def write_code(code: str, filename: str):
     Returns:
         Execution results
     """
+    workspace_dir = state["workspace"]
     print("Writing filename ", filename)
     try:
         # Extract code if wrapped in markdown code blocks
@@ -183,7 +218,7 @@ def command_safe(state: ExecutionState) -> Literal["safe", "unsafe"]:
 def main():
     execution_agent = ExecutionAgent()
     problem_string = "Write and execute a python script to print the first 10 integers." 
-    inputs = {"messages": [HumanMessage(content=problem_string)]}
+    inputs = {"messages": [HumanMessage(content=problem_string)]}#, "workspace":"dummy_test"}
     result = execution_agent.action.invoke(inputs)
     print(result["messages"][-1].content)
     return result

@@ -1,7 +1,7 @@
 import sys
 sys.path.append("../../.")
 
-from lanl_scientific_agent.agents import ExecutionAgent
+from lanl_scientific_agent.agents import ResearchAgent
 from langchain_core.messages      import HumanMessage
 from langchain_openai             import ChatOpenAI
 from langchain_ollama.chat_models import ChatOllama
@@ -10,16 +10,10 @@ def main():
     """Run a simple example of an agent."""
     try:
         # Define a simple problem
-        problem = """ 
-        "Optimize the six-hump camel function. 
-            Start by evaluating that function at 10 locations.
-            Then utilize Bayesian optimization to build a surrogate model 
-                and sequentially select points until the function is optimized. 
-            Carry out the optimization and report the results.
-        """
+        problem = "Find a city with as least 10 vowels in its name."
         model = ChatOpenAI(
-            model       = "o3-mini",
-            max_tokens  = 50000,
+            model       = "o1",
+            max_tokens  = 20000,
             timeout     = None,
             max_retries = 2)
         # model = ChatOllama(
@@ -29,19 +23,20 @@ def main():
         #     max_retries = 2
         # )
         
-        init = {"messages": [HumanMessage(content=problem)], "workspace":"workspace_BO"}
+        init = {"messages": [HumanMessage(content=problem)]}
         
         print(f"\nSolving problem: {problem}\n")
         
         # Initialize the agent
-        executor = ExecutionAgent(llm=model)
+        researcher  = ResearchAgent(llm=model)
         
         # Solve the problem
-        final_results   = executor.action.invoke(init)
-        for x in final_results["messages"]:
+        research_output = researcher.action.invoke(init)
+        print(research_output["messages"][-1].content)
+        for x in research_output["messages"]:
             print(x.content)
-              
-        return final_results["messages"][-1].content
+                
+        return research_output["messages"][-1].content, research_output.get("urls_visited",None)
     
     except Exception as e:
         print(f"Error in example: {str(e)}")
@@ -50,4 +45,11 @@ def main():
         return {"error": str(e)}
 
 if __name__ == "__main__":
-    main()
+    final_output = main()
+    print("="*80)
+    print("="*80)
+    print("="*80)
+    print(final_output[0])
+    print(final_output[1])
+
+# Solving problem: Find a city with as least 10 vowels in its name.

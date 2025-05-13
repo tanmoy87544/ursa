@@ -50,7 +50,7 @@ def main():
         last_step_string = "Beginning step 1 of the plan. "
         for x in planning_output["plan_steps"]:
             plan_string      = str(x)
-            final_results    = executor.action.invoke({"messages": [HumanMessage(content=last_step_string + plan_string)]})
+            final_results    = executor.action.invoke({"messages": [HumanMessage(content=last_step_string + plan_string)], "workspace":"workspace_stepByStep_Surrogate"})
             last_step_string = final_results["messages"][-1].content
             print(last_step_string)
                 
