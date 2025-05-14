@@ -1,12 +1,13 @@
 import sys
 sys.path.append("../../.")
 
-from lanl_scientific_agent.agents import LiteratureAgent
+from lanl_scientific_agent.agents import ArxivAgent
 
 
 def main():
-    agent = LiteratureAgent()
-    result = agent.run("Experimental Constraints on neutron star radius")
+    agent = ArxivAgent()
+    result = agent.run(arxiv_search_query="Experimental Constraints on neutron star radius", 
+                       context="What are the constraints on the neutron star radius and what uncertainties are there on the constraints?")
     print(result)
 
 
