@@ -92,7 +92,7 @@ def extract_and_describe_images(pdf_path: str, max_images: int = 5) -> List[str]
 
 
 # === Main Agent ===
-class LiteratureAgent(BaseAgent):
+class ArxivAgent(BaseAgent):
     def __init__(self, llm="OpenAI/o3-mini", process_images = True, max_results: int = 3, *args, **kwargs):
         super().__init__(llm, args, kwargs)
         self.max_results = max_results
@@ -219,7 +219,7 @@ class LiteratureAgent(BaseAgent):
 
 
 if __name__ == "__main__":
-    agent = LiteratureAgent()
+    agent = ArxivAgent()
     result = agent.run(arxiv_search_query="Experimental Constraints on neutron star radius", 
                        context="What are the constraints on the neutron star radius and what uncertainties are there on the constraints?")
     print(result)
