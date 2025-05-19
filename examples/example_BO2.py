@@ -61,4 +61,5 @@ def main(mode: str):
 
 
 if __name__ == "__main__":
-    main(mode=sys.argv[-1])  # dev or prod
+    mode = "dev" if sys.argv[-1] == "dev" else "prod"
+    main(mode=mode)  # dev or prod

@@ -46,7 +46,8 @@ def main(mode: str):
 
 
 if __name__ == "__main__":
-    final_output = main(mode=sys.argv[-1])  # dev or prod
+    mode = "dev" if sys.argv[-1] == "dev" else "prod"
+    final_output = main(mode=mode)  # dev or prod
     print("=" * 80)
     print("=" * 80)
     print("=" * 80)
