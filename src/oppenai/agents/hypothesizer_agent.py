@@ -487,6 +487,24 @@ class HypothesizerAgent(BaseAgent):
 
         self.action = self.graph.compile()
         # self.action.get_graph().draw_mermaid_png(output_file_path="hypothesizer_agent_graph.png", draw_method=MermaidDrawMethod.PYPPETEER)
+    
+    def run(self, prompt, max_iter=3):
+        # Initialize the state
+        initial_state = HypothesizerState(
+            question=prompt,
+            current_iteration=0,
+            max_iterations=max_iter,
+            agent1_solution=[],
+            agent2_critiques=[],
+            agent3_perspectives=[],
+            final_solution="",
+        )
+        # Run the graph
+        result = hypothesizer_agent.action.invoke(
+            initial_state, {"recursion_limit": 999999}
+        )
+        return result["final_solution"]
+
 
 
 def should_continue(state: HypothesizerState) -> Literal["continue", "finish"]:

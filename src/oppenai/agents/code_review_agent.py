@@ -7,7 +7,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.tools import tool
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.message import add_messages
-from langgraph.prebuilt import ToolNode
+from langgraph.prebuilt import ToolNode, InjectedState
 from typing_extensions import TypedDict
 
 from ..prompt_library.code_review_prompts import (
@@ -19,9 +19,6 @@ from ..prompt_library.execution_prompts import summarize_prompt
 # from langchain_core.runnables.graph import MermaidDrawMethod
 from .base import BaseAgent
 
-workspace_dir = "./workspace/"
-os.makedirs(workspace_dir, exist_ok=True)
-
 # --- ANSI color codes ---
 GREEN = "\033[92m"
 BLUE = "\033[94m"
@@ -29,12 +26,17 @@ RED = "\033[91m"
 RESET = "\033[0m"
 BOLD = "\033[1m"
 
+code_extensions = [".py", ".R", ".jl", 
+                   ".c", ".cpp", ".cc", ".cxx", ".c++", ".C", 
+                   ".f90", ".f95", ".f03"]
+
 
 class CodeReviewState(TypedDict):
     messages: Annotated[list, add_messages]
     project_prompt: str
     code_files: list[str]
     edited_files: list[str]
+    workspace: str
     iteration: int
 
 
@@ -57,6 +59,9 @@ class CodeReviewAgent(BaseAgent):
     # Define the function that calls the model
     def plan_review(self, state: CodeReviewState) -> CodeReviewState:
         new_state = state.copy()
+
+        assert "workspace" in new_state.keys(), "No workspace set for review!"
+
         plan_review_prompt = get_plan_review_prompt(
             project_prompt=state["project_prompt"],
             file_list=state["code_files"],
@@ -185,11 +190,24 @@ class CodeReviewAgent(BaseAgent):
 
         self.action = self.graph.compile()
         # self.action.get_graph().draw_mermaid_png(output_file_path="code_review_agent_graph.png", draw_method=MermaidDrawMethod.PYPPETEER)
+    
+    def run(self, prompt, workspace):
+        code_files    = [x for x in os.listdir(workspace) if any([ext in x for ext in code_extensions])]
+        initial_state = {
+            "messages": [],
+            "project_prompt": prompt,
+            "code_files": code_files,
+            "edited_files": [],
+            "iteration": 0,
+            "workspace":workspace
+        }
+        return self.action.invoke(initial_state)
 
 
 @tool
-def run_cmd(query: str) -> str:
+def run_cmd(query: str, state: Annotated[dict, InjectedState]) -> str:
     """Run command from commandline"""
+    workspace_dir = state["workspace"]
 
     print("RUNNING: ", query)
     process = subprocess.Popen(
@@ -209,21 +227,24 @@ def run_cmd(query: str) -> str:
 
 
 @tool
-def read_file(filename: str):
+def read_file(filename: str, state: Annotated[dict, InjectedState]):
     """
     Reads in a file with a given filename into a string
 
     Args:
         filename: string filename to read in
     """
-    print("[READING]: ", filename)
-    with open(workspace_dir + filename, "r") as file:
+    workspace_dir = state["workspace"]
+    full_filename = os.path.join(workspace_dir, filename)
+
+    print("[READING]: ", full_filename)
+    with open(full_filename, "r") as file:
         file_contents = file.read()
     return file_contents
 
 
 @tool
-def write_file(code: str, filename: str):
+def write_file(code: str, filename: str, state: Annotated[dict, InjectedState]):
     """
     Writes text to a file in the given workspace as requested.
 
@@ -234,6 +255,8 @@ def write_file(code: str, filename: str):
     Returns:
         Execution results
     """
+    workspace_dir = state["workspace"]
+
     print("[WRITING]: ", filename)
     try:
         # Extract code if wrapped in markdown code blocks

@@ -1,5 +1,5 @@
 import os
-import pymupdf  # PyMuPDF
+import pymupdf 
 import requests
 import feedparser
 from PIL import Image
@@ -12,7 +12,6 @@ from langchain_community.document_loaders import PyPDFLoader
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
-from langchain_ollama import ChatOllama
 from langgraph.graph import StateGraph, END, START
 # from langchain_core.runnables.graph import MermaidDrawMethod
 
@@ -93,8 +92,8 @@ def extract_and_describe_images(pdf_path: str, max_images: int = 5) -> List[str]
 
 # === Main Agent ===
 class ArxivAgent(BaseAgent):
-    def __init__(self, llm="OpenAI/o3-mini", process_images = True, max_results: int = 3, *args, **kwargs):
-        super().__init__(llm, args, kwargs)
+    def __init__(self, llm="openai/o3-mini", process_images = True, max_results: int = 3, *args, **kwargs):
+        super().__init__(llm, **kwargs)
         self.max_results = max_results
         self.process_images = process_images
         self.graph = self._build_graph()

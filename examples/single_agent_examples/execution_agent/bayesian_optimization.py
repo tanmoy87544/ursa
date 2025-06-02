@@ -1,0 +1,48 @@
+import sys
+
+from langchain_community.chat_models import ChatLiteLLM
+from langchain_core.messages import HumanMessage
+
+from oppenai.agents import ExecutionAgent
+
+
+### Run a simple example of an Execution Agent.
+
+# Define a simple problem
+problem = """ 
+"Optimize the six-hump camel function. 
+    Start by evaluating that function at 10 locations.
+    Then utilize Bayesian optimization to build a surrogate model 
+        and sequentially select points until the function is optimized. 
+    Carry out the optimization and report the results.
+"""
+
+model = ChatLiteLLM(
+    model="openai/o3-mini",
+    max_tokens=50000,
+)
+
+# Initialize the agent
+executor = ExecutionAgent(llm=model)
+
+set_workspace = False
+
+if set_workspace:
+    # Syntax if you want to explicitly set the directory to work in
+    init = {
+        "messages": [HumanMessage(content=problem)],
+        "workspace": "workspace_BO",
+    }
+
+    print(f"\nSolving problem: {problem}\n")
+    
+    
+    # Solve the problem
+    final_results = executor.action.invoke(init)
+else:
+    final_results = executor.run(problem)
+
+for x in final_results["messages"]:
+    print(x.content)
+
+

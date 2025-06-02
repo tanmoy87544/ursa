@@ -102,7 +102,13 @@ class ResearchAgent(BaseAgent):
         )
         self.action = self.graph.compile()
         # self.action.get_graph().draw_mermaid_png(output_file_path="./research_agent_graph.png", draw_method=MermaidDrawMethod.PYPPETEER)
-
+    
+    def run(self, prompt):
+        inputs = {
+            "messages": [HumanMessage(content=prompt)],
+            "model": self.llm,
+        }
+        return self.action.invoke(inputs, {"recursion_limit": 10000})        
 
 def process_content(
     url: str, context: str, state: Annotated[dict, InjectedState]

@@ -1,6 +1,6 @@
 import sys
 
-from lanl_scientific_agent.agents import ArxivAgent
+from oppenai.agents import ArxivAgent
 
 
 def main():

@@ -99,6 +99,10 @@ class PlanningAgent(BaseAgent):
         # self.action = self.graph.compile(checkpointer=memory)
         self.action = self.graph.compile()
         # self.action.get_graph().draw_mermaid_png(output_file_path="planning_agent_graph.png", draw_method=MermaidDrawMethod.PYPPETEER)
+    
+    def run(self, prompt):
+        initial_state = {"messages": [HumanMessage(content=prompt)]}
+        return self.action.invoke(initial_state)
 
 
 config = {"configurable": {"thread_id": "1"}}
