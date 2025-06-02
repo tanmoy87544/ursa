@@ -1,6 +1,6 @@
 # OppenAI - The LANL Scientific Agent
 
-![OppenAI Logo](./logos/logo.png){width=200px}
+<img src="./logos/logo.png" alt="OppenAI Logo" width="200" height="200">
 
 Testing a centralized package for an agentic workflow. This should not be the final name, but I am pushing up this code that works. 
 
