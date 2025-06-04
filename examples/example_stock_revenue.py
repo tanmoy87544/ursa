@@ -19,27 +19,34 @@ def main(mode: str):
     try:
         # 1. problem statement
 
-        min_year = 2024
-        workspace = "r_and_d_expenditure"
-        problem = (
-            f"Identify three publicly traded companies with the highest ratio of R&D expenditure "
-            f"to total revenue in their latest fiscal year (>= {min_year}).  "
-            f"Search recent SEC 10-K filings or trusted financial APIs for the figures.  "
-            f"Write Python code to scrape/parse the data, compute the ratios, and present a ranked "
-            f"DataFrame plus a bar chart of R&D-to-revenue percentages."
-        )
-        # workspace = "r_and_d_ratio_demo"
-        # tickers   = ["AAPL", "MSFT", "NVDA"]
-        # min_year  = 2024
-
+        # Nathan:
+        # This is the problem description I really want - but I'm definitely having problems
+        # consistently getting this to search the internet for companies and then use them
+        # it seems to, instead, just fail and then start making up fake companies and wasting
+        # tokens playing with fake data.  Replacing this text w/ the one below it:
+        # min_year = 2024
+        # workspace = "r_and_d_expenditure"
         # problem = (
-        #     f"Using SEC EDGAR or a free financial API, fetch each of these tickers’ latest "
-        #     f"{min_year}–present 10-K data: {', '.join(tickers)}. "
-        #     f"For each company, obtain total revenue and R&D expense, compute the R&D-to-revenue "
-        #     f"ratio, then output a pandas DataFrame ranked highest→lowest and save a bar chart "
-        #     f"as '{workspace}/rd_ratio.png'.  Code must include a symbol→CIK lookup call—no "
-        #     f"hard-coded CIKs or placeholder keys.  "
+        #     f"Identify three publicly traded companies with the highest ratio of R&D expenditure "
+        #     f"to total revenue in their latest fiscal year (>= {min_year}).  "
+        #     f"Search recent SEC 10-K filings or trusted financial APIs for the figures.  "
+        #     f"Write Python code to scrape/parse the data, compute the ratios, and present a ranked "
+        #     f"DataFrame plus a bar chart of R&D-to-revenue percentages."
         # )
+        workspace = "r_and_d_ratio_demo"
+        tickers   = ["AAPL", "MSFT", "NVDA", "GOOGL", "AMZN", "META", "INTC", "JNJ"]
+        min_year  = 2024
+        problem = (
+            f"Using SEC EDGAR (or a free financial API), fetch each ticker’s latest fiscal-year "
+            f"{min_year}-present Form 10-K: {', '.join(tickers)}.  For every company, obtain total "
+            f"revenue and R&D expense, compute the R&D-to-revenue ratio, rank the results highest -> "
+            f"lowest, and output a pandas DataFrame.  Save a bar chart to "
+            f"rd_ratio.png  **Do not call plt.show(); "
+            f"use plt.savefig(...), then plt.close(), so no GUI window appears.**  Code must perform "
+            f"a live symbol -> CIK lookup—absolutely no hard-coded CIKs or placeholder keys—and should "
+            f"cache the SEC 'company_tickers.json' file locally (e.g., in the workspace) to avoid "
+            f"repeated network calls."
+        )
 
         # Nathan needed this - for zscaler.  You might need to remove this if this isn't where you put your
         # zscaler cert stuff.
@@ -96,7 +103,7 @@ def main(mode: str):
         ) as progress:
             # planning_output is the main planning agent's plans - so they're high level
             # steps that need to be carried out
-            
+
             # notice top level planning agent steps are then re-planned for more sub-steps by
             # the planning agent again down here.
 
