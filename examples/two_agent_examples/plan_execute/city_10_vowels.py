@@ -1,0 +1,54 @@
+import sys
+
+from langchain_community.chat_models import ChatLiteLLM
+from langchain_core.messages import HumanMessage
+
+from oppenai.agents import ExecutionAgent, PlanningAgent
+
+
+def main(mode: str):
+    """Run a simple example of an agent."""
+    try:
+        # Define a simple problem
+        problem = "Find a city with as least 10 vowels in its name."
+        model = ChatLiteLLM(
+            model="openai/o3-mini"
+            if mode == "prod"
+            else "ollama_chat/llama3.1:8b",
+            max_tokens=10000 if mode == "prod" else 4000,
+            max_retries=2,
+        )
+        init = {"messages": [HumanMessage(content=problem)]}
+
+        print(f"\nSolving problem: {problem}\n")
+
+        # Initialize the agent
+        planner = PlanningAgent(llm=model)
+        executor = ExecutionAgent(llm=model)
+
+        # Solve the problem
+        planning_output = planner.action.invoke(init)
+        print(planning_output["messages"][-1].content)
+        planning_output["workspace"] = "workspace_cityVowels"
+        final_results = executor.action.invoke(planning_output)
+        for x in final_results["messages"]:
+            print(x.content)
+        # print(final_results["messages"][-1].content)
+
+        return final_results["messages"][-1].content
+
+    except Exception as e:
+        print(f"Error in example: {str(e)}")
+        import traceback
+
+        traceback.print_exc()
+        return {"error": str(e)}
+
+
+if __name__ == "__main__":
+    mode = "dev" if sys.argv[-1] == "dev" else "prod"
+    final_output = main(mode=mode)  # dev or prod
+    print("=" * 80)
+    print("=" * 80)
+    print("=" * 80)
+    print(final_output)
