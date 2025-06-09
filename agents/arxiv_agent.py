@@ -27,8 +27,8 @@ client = OpenAI()
 # === Data Schemas ===
 class PaperMetadata(TypedDict):
     arxiv_id: str
-    title: str
-    authors: str
+    #title: str
+    #authors: str
     full_text: str
 
 class PaperState(TypedDict, total=False):
@@ -93,48 +93,67 @@ def extract_and_describe_images(pdf_path: str, max_images: int = 5) -> List[str]
 
 # === Main Agent ===
 class ArxivAgent(BaseAgent):
-    def __init__(self, llm="OpenAI/o3-mini", process_images = True, max_results: int = 3, *args, **kwargs):
+    def __init__(self, llm="OpenAI/o3-mini", summarize: bool = True, process_images = True, max_results: int = 3,
+                 database_dir='database', download_papers: bool = True, *args, **kwargs):
         super().__init__(llm, args, kwargs)
-        self.max_results = max_results
+        self.summarize = summarize
         self.process_images = process_images
+        self.max_results = max_results
+        self.database_dir = database_dir
+        self.download_papers = download_papers
+        
         self.graph = self._build_graph()
 
+        os.makedirs(self.database_dir, exist_ok=True)
+
+        os.makedirs('database_summaries', exist_ok=True)
+
     def _fetch_papers(self, query: str) -> List[PaperMetadata]:
-        encoded_query = quote(query)
-        url = f"http://export.arxiv.org/api/query?search_query=all:{encoded_query}&start=0&max_results={self.max_results}"
-        feed = feedparser.parse(url)
+    
+        if self.download_papers:
+            
+            encoded_query = quote(query)
+            url = f"http://export.arxiv.org/api/query?search_query=all:{encoded_query}&start=0&max_results={self.max_results}"
+            feed = feedparser.parse(url)
+    
+            for i,entry in enumerate(feed.entries):
+                full_id = entry.id.split('/abs/')[-1]
+                arxiv_id = full_id.split('/')[-1]
+                title = entry.title.strip()
+                authors = ", ".join(author.name for author in entry.authors)
+                pdf_url = f"https://arxiv.org/pdf/{full_id}.pdf"
+                pdf_filename = os.path.join(self.database_dir, f"{arxiv_id}.pdf")
+    
+                if os.path.exists(pdf_filename):
+                    print(f"Paper # {i+1}, Title: {title}, already exists in database")
+                else:
+                    print(f"Downloading paper # {i+1}, Title: {title}")
+                    response = requests.get(pdf_url)
+                    with open(pdf_filename, 'wb') as f:
+                        f.write(response.content)
+                        
 
         papers = []
-        for entry in feed.entries:
-            arxiv_id = entry.id.split('/abs/')[-1]
-            title = entry.title.strip()
-            authors = ", ".join(author.name for author in entry.authors)
-            pdf_url = f"https://arxiv.org/pdf/{arxiv_id}.pdf"
-            pdf_filename = f"{arxiv_id}.pdf"
-
-            try:
-                response = requests.get(pdf_url)
-                with open(pdf_filename, 'wb') as f:
-                    f.write(response.content)
-
-                loader = PyPDFLoader(pdf_filename)
-                pages = loader.load()
-                full_text = "\n".join([p.page_content for p in pages])
-
-                if self.process_images:
-                    image_descriptions = extract_and_describe_images(pdf_filename)
-                    full_text += "\n\n[Image Interpretations]\n" + "\n".join(image_descriptions)
-
-            except Exception as e:
-                full_text = f"Error fetching paper: {e}"
-            finally:
-                if os.path.exists(pdf_filename):
-                    os.remove(pdf_filename)
-
+        for i,pdf_filename in enumerate(os.listdir(self.database_dir)):
+            full_text = ""
+            #if self.summarize:
+            if False:
+                try:
+                    loader = PyPDFLoader( os.path.join(self.database_dir, pdf_filename) )
+                    pages = loader.load()
+                    full_text = "\n".join([p.page_content for p in pages])
+        
+                    if self.process_images:
+                        image_descriptions = extract_and_describe_images(pdf_filename)
+                        full_text += "\n\n[Image Interpretations]\n" + "\n".join(image_descriptions)
+                        
+                except Exception as e:
+                    full_text = f"Error loading paper: {e}"
+    
             papers.append({
-                "arxiv_id": arxiv_id,
-                "title": title,
-                "authors": authors,
+                "arxiv_id": pdf_filename.split('.pdf')[0],
+                #"title": title,
+                #"authors": authors,
                 "full_text": full_text,
             })
 
@@ -167,11 +186,13 @@ class ArxivAgent(BaseAgent):
             """)
         else:
             prompt = ChatPromptTemplate.from_template("""
-            You are a scientific assistant helping summarize research papers.
+            You are a scientific assistant helping extract insights from research papers.
             
             The paper below consists of the main written content (from the body of the PDF)
             
-            Your task is to summarize the paper in the following context: {context}
+            Your task is to read the paper and provide a short summary that accomplishes the task: {context}
+
+            If the paper is irrelevant to the task, then just state it as such.
             
             Here is the paper content:
             
@@ -180,43 +201,95 @@ class ArxivAgent(BaseAgent):
         chain = prompt | self.llm | StrOutputParser()
     
         for paper in state["papers"]:
-            summary = chain.invoke({"paper": paper["full_text"], "context":state["context"]})
-            summaries.append(summary)
+            arxiv_id = paper["arxiv_id"]
+            summary_filename = os.path.join('database_summaries', f"{arxiv_id}_summary.txt")
+            if os.path.exists(summary_filename):
+                with open(summary_filename, 'r') as f:
+                    summaries.append(f.read())
+
+            else:
+                try:
+                    summary = chain.invoke({"paper": paper["full_text"], "context":state["context"]})
+                    
+                except Exception as e:
+                    summary = f"Error summarizing paper: {e}"
+                    
+                summaries.append(summary)
+                
+                with open(summary_filename, "w") as f:
+                    f.write(summary)
     
         return {**state, "summaries": summaries}
 
+
+    
     def _aggregate_node(self, state: PaperState) -> PaperState:
         summaries = state["summaries"]
         papers = state["papers"]
         formatted = []
 
         for i, (paper, summary) in enumerate(zip(papers, summaries)):
-            citation = f"[{i+1}] {paper['title']} by {paper['authors']}\nLink: https://arxiv.org/abs/{paper['arxiv_id']}"
+            citation = f"[{i+1}] Arxiv ID: {paper['arxiv_id']}"
             formatted.append(f"{citation}\n\nSummary:\n{summary}")
 
         combined = "\n\n" + ("\n\n" + "-" * 40 + "\n\n").join(formatted)
-        return {**state, "final_summary": combined}
 
+        with open('summaries_combined.txt', "w") as f:
+            f.write(combined)
+
+
+        prompt = ChatPromptTemplate.from_template("""
+            You are a scientific assistant helping extract insights from summaries of research papers.
+            
+            Here are the summaries of a large number of scientific papers:
+
+            {Summaries}
+            
+            Your task is to read all the summaries and provide a response to this task: {context}
+            """)
+
+        chain = prompt | self.llm | StrOutputParser()
+
+        final_summary = chain.invoke({"Summaries": combined, "context":state["context"]})
+
+        with open('final_summary.txt', "w") as f:
+            f.write(final_summary)
+
+        return {**state, "final_summary": final_summary}
+
+
+    
     def _build_graph(self):
         builder = StateGraph(PaperState)
         builder.add_node("fetch_papers", self._fetch_node)
-        builder.add_node("summarize_each", self._summarize_node)
-        builder.add_node("aggregate", self._aggregate_node)
 
-        builder.set_entry_point("fetch_papers")
-        builder.add_edge("fetch_papers", "summarize_each")
-        builder.add_edge("summarize_each", "aggregate")
-        builder.set_finish_point("aggregate")
+        if self.summarize:
+            builder.add_node("summarize_each", self._summarize_node)
+            builder.add_node("aggregate", self._aggregate_node)
+
+            builder.set_entry_point("fetch_papers")
+            builder.add_edge("fetch_papers", "summarize_each")
+            builder.add_edge("summarize_each", "aggregate")
+            builder.set_finish_point("aggregate")
+            #builder.set_finish_point("summarize_each")
+
+        else:
+            builder.set_entry_point("fetch_papers")
+            builder.set_finish_point("fetch_papers")
+    
 
         graph = builder.compile()
-        # graph.get_graph().draw_mermaid_png(output_file_path="arxiv_agent_graph.png", draw_method=MermaidDrawMethod.PYPPETEER)
         return graph
 
     def run(self, arxiv_search_query: str, context: str) -> str:
         result = self.graph.invoke({"query": arxiv_search_query, "context":context})
-        return result.get("final_summary", "No summary generated.")
 
-
+        if self.summarize:
+            return result.get("final_summary", "No summary generated.")
+        else:
+            return "\n\nFinished Fetching papers!"
+    
+    
 
 if __name__ == "__main__":
     agent = ArxivAgent()
