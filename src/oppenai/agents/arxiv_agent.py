@@ -211,8 +211,8 @@ class ArxivAgent(BaseAgent):
         # graph.get_graph().draw_mermaid_png(output_file_path="arxiv_agent_graph.png", draw_method=MermaidDrawMethod.PYPPETEER)
         return graph
 
-    def run(self, arxiv_search_query: str, context: str) -> str:
-        result = self.graph.invoke({"query": arxiv_search_query, "context":context})
+    def run(self, arxiv_search_query: str, context: str, recursion_limit=100) -> str:
+        result = self.graph.invoke({"query": arxiv_search_query, "context":context}, {"recursion_limit":recursion_limit})
         return result.get("final_summary", "No summary generated.")
 
 

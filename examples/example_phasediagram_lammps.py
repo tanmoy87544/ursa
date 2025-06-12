@@ -20,6 +20,7 @@ Write python to:
 
 No hypothetical examples! 
 Evaluate LAMMPS as needed. You have a valid installation.
+The folders potential and potentials in your workspace contain the required potential files. 
 
 Summarize your results in a webpage with interactive visualization.
 """
@@ -39,7 +40,7 @@ def main():
 
         # Initialize the agent
         # hypothesizer = HypothesizerAgent(llm  = model)
-        planner = PlanningAgent(llm=model_o4)
+        planner = PlanningAgent(llm=model_o3)
         executor = ExecutionAgent(llm=model_o3)
 
         # Solve the problem
@@ -76,7 +77,7 @@ def main():
                 {execute_string}
             """
             final_results = executor.action.invoke(
-                {"messages": [HumanMessage(content=step_prompt)]},
+                {"messages": [HumanMessage(content=step_prompt)],"workspace":"phase_diagram"},
                 {"recursion_limit": 999999},
             )
             last_step_string = final_results["messages"][-1].content

@@ -82,7 +82,7 @@ class ExecutionAgent(BaseAgent):
         if state["messages"][-1].tool_calls[0]["name"] == "run_cmd":
             query = state["messages"][-1].tool_calls[0]["args"]["query"]
             safety_check = self.llm.invoke(
-                "Assume commands to run python and Julia are safe because the files are from a trusted source. Answer only either [YES] or [NO]. Is this command safe to run: "
+                "Assume commands to run/install python and Julia files are safe because the files are from a trusted source. Answer only either [YES] or [NO]. Is this command safe to run: "
                 + query
             )
             if "[NO]" in safety_check.content:
@@ -156,11 +156,11 @@ class ExecutionAgent(BaseAgent):
         self.action = self.graph.compile()
         # self.action.get_graph().draw_mermaid_png(output_file_path="execution_agent_graph.png", draw_method=MermaidDrawMethod.PYPPETEER)
     
-    def run(self, prompt):
+    def run(self, prompt, recursion_limit = 1000):
         inputs = {
             "messages": [HumanMessage(content=prompt)]
         }
-        return self.action.invoke(inputs)
+        return self.action.invoke(inputs, {"recursion_limit": recursion_limit})
 
 
 
@@ -175,19 +175,17 @@ def run_cmd(query: str, state: Annotated[dict, InjectedState]) -> str:
     workspace_dir = state["workspace"]
     print("RUNNING: ", query)
     try:
-        process = subprocess.Popen(
-            query.split(" "),
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-            cwd=workspace_dir,
-        )
-
-        stdout, stderr = process.communicate(timeout=60000)
+        result = subprocess.run(query,
+                                text = True,
+                                shell=True,
+                                timeout=60000,
+                                capture_output=True,
+                                cwd=workspace_dir)
+        stdout, stderr = result.stdout, result.stderr
     except KeyboardInterrupt:
         print("Keyboard Interrupt of command: ", query)
         stdout, stderr = "", "KeyboardInterrupt:"
-
+    
     print("STDOUT: ", stdout)
     print("STDERR: ", stderr)
 

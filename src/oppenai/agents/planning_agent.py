@@ -100,9 +100,9 @@ class PlanningAgent(BaseAgent):
         self.action = self.graph.compile()
         # self.action.get_graph().draw_mermaid_png(output_file_path="planning_agent_graph.png", draw_method=MermaidDrawMethod.PYPPETEER)
     
-    def run(self, prompt):
+    def run(self, prompt,recursion_limit=100):
         initial_state = {"messages": [HumanMessage(content=prompt)]}
-        return self.action.invoke(initial_state)
+        return self.action.invoke(initial_state, {"recursion_limit":recursion_limit})
 
 
 config = {"configurable": {"thread_id": "1"}}
