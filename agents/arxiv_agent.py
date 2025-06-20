@@ -136,8 +136,8 @@ class ArxivAgent(BaseAgent):
         papers = []
         for i,pdf_filename in enumerate(os.listdir(self.database_dir)):
             full_text = ""
-            #if self.summarize:
-            if False:
+            if self.summarize:
+            #if False:
                 try:
                     loader = PyPDFLoader( os.path.join(self.database_dir, pdf_filename) )
                     pages = loader.load()
