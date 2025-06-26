@@ -485,7 +485,7 @@ class HypothesizerAgent(BaseAgent):
         # Set the entry point
         self.graph.set_entry_point("agent1")
 
-        self.action = self.graph.compile()
+        self.action = self.graph.compile(checkpointer=self.checkpointer)
         # self.action.get_graph().draw_mermaid_png(output_file_path="hypothesizer_agent_graph.png", draw_method=MermaidDrawMethod.PYPPETEER)
     
     def run(self, prompt, max_iter=3, recursion_limit=99999):
@@ -501,7 +501,7 @@ class HypothesizerAgent(BaseAgent):
         )
         # Run the graph
         result = hypothesizer_agent.action.invoke(
-            initial_state, {"recursion_limit": recursion_limit}
+            initial_state, {"recursion_limit": recursion_limit, "configurable": {"thread_id": self.thread_id}}
         )
         return result["final_solution"]
 
@@ -583,7 +583,7 @@ if __name__ == "__main__":
     print("[DEBUG] Invoking the graph...")
     # Run the graph
     result = hypothesizer_agent.action.invoke(
-        initial_state, {"recursion_limit": 999999}
+        initial_state, {"recursion_limit": 999999, "configurable": {"thread_id": self.thread_id}}
     )
     summary_text = result["summary_report"]
 
