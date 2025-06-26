@@ -1,5 +1,9 @@
+'''
+TO-DO: Update the prompt in _summarize_node if self.process_images=True
+'''
+
 import os
-import pymupdf  # PyMuPDF
+import pymupdf  
 import requests
 import feedparser
 from PIL import Image
@@ -11,24 +15,20 @@ from typing_extensions import TypedDict, List
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_openai import ChatOpenAI
-from langchain_ollama import ChatOllama
 from langgraph.graph import StateGraph, END, START
-# from langchain_core.runnables.graph import MermaidDrawMethod
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_community.vectorstores import FAISS
+from langchain_openai import OpenAIEmbeddings
 
 from openai import OpenAI
 
 from .base import BaseAgent
 
 
-# === OpenAI Vision Client ===
 client = OpenAI()
 
-# === Data Schemas ===
 class PaperMetadata(TypedDict):
     arxiv_id: str
-    #title: str
-    #authors: str
     full_text: str
 
 class PaperState(TypedDict, total=False):
@@ -39,7 +39,6 @@ class PaperState(TypedDict, total=False):
     final_summary: str
 
 
-# === Image Description with GPT-4V ===
 def describe_image(image: Image.Image) -> str:
     buffered = BytesIO()
     image.save(buffered, format="PNG")
@@ -91,23 +90,31 @@ def extract_and_describe_images(pdf_path: str, max_images: int = 5) -> List[str]
     return descriptions
 
 
-# === Main Agent ===
+
 class ArxivAgent(BaseAgent):
     def __init__(self, llm="OpenAI/o3-mini", summarize: bool = True, process_images = True, max_results: int = 3,
-                 database_dir='database', download_papers: bool = True, *args, **kwargs):
+                 database_path      ='database', 
+                 summaries_path     ='database_summaries', 
+                 vectorstore_path   ='vectorstores', 
+                 download_papers: bool = True, *args, **kwargs):
+        
         super().__init__(llm, args, kwargs)
-        self.summarize = summarize
-        self.process_images = process_images
-        self.max_results = max_results
-        self.database_dir = database_dir
-        self.download_papers = download_papers
+        self.summarize        = summarize
+        self.process_images   = process_images
+        self.max_results      = max_results
+        self.database_path    = database_path
+        self.summaries_path   = summaries_path
+        self.vectorstore_path = vectorstore_path
+        self.download_papers  = download_papers
         
         self.graph = self._build_graph()
 
-        os.makedirs(self.database_dir, exist_ok=True)
+        os.makedirs(self.database_path, exist_ok=True)
 
-        os.makedirs('database_summaries', exist_ok=True)
+        os.makedirs(self.summaries_path, exist_ok=True)
 
+        os.makedirs(self.vectorstore_path, exist_ok=True)
+        
     def _fetch_papers(self, query: str) -> List[PaperMetadata]:
     
         if self.download_papers:
@@ -122,7 +129,7 @@ class ArxivAgent(BaseAgent):
                 title = entry.title.strip()
                 authors = ", ".join(author.name for author in entry.authors)
                 pdf_url = f"https://arxiv.org/pdf/{full_id}.pdf"
-                pdf_filename = os.path.join(self.database_dir, f"{arxiv_id}.pdf")
+                pdf_filename = os.path.join(self.database_path, f"{arxiv_id}.pdf")
     
                 if os.path.exists(pdf_filename):
                     print(f"Paper # {i+1}, Title: {title}, already exists in database")
@@ -134,12 +141,11 @@ class ArxivAgent(BaseAgent):
                         
 
         papers = []
-        for i,pdf_filename in enumerate(os.listdir(self.database_dir)):
+        for i,pdf_filename in enumerate(os.listdir(self.database_path)):
             full_text = ""
             if self.summarize:
-            #if False:
                 try:
-                    loader = PyPDFLoader( os.path.join(self.database_dir, pdf_filename) )
+                    loader = PyPDFLoader( os.path.join(self.database_path, pdf_filename) )
                     pages = loader.load()
                     full_text = "\n".join([p.page_content for p in pages])
         
@@ -152,8 +158,6 @@ class ArxivAgent(BaseAgent):
     
             papers.append({
                 "arxiv_id": pdf_filename.split('.pdf')[0],
-                #"title": title,
-                #"authors": authors,
                 "full_text": full_text,
             })
 
@@ -163,8 +167,28 @@ class ArxivAgent(BaseAgent):
         papers = self._fetch_papers(state["query"])
         return {**state, "papers": papers}
 
+    
+    def _get_or_build_vectorstore(self, paper_text: str, arxiv_id: str):
+        save_loc =  self.vectorstore_path + '/' + arxiv_id
+        embeddings = OpenAIEmbeddings()
+    
+        if os.path.exists(os.path.join(save_loc, "index.faiss")):
+            print(f"Loading cached vectorstore for {arxiv_id}")
+            vectorstore = FAISS.load_local(save_loc, embeddings,allow_dangerous_deserialization=True)
+        else:
+            print(f"Building new vectorstore for {arxiv_id}")
+            splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+            docs = splitter.create_documents([paper_text])
+            vectorstore = FAISS.from_documents(docs, embeddings)
+            vectorstore.save_local(save_loc)
+    
+        return vectorstore.as_retriever(search_kwargs={"k": 5})
+            
+
     def _summarize_node(self, state: PaperState) -> PaperState:
+        
         summaries = []
+        
         if self.process_images:
             prompt = ChatPromptTemplate.from_template("""
             You are a scientific assistant helping summarize research papers.
@@ -186,30 +210,29 @@ class ArxivAgent(BaseAgent):
             """)
         else:
             prompt = ChatPromptTemplate.from_template("""
-            You are a scientific assistant helping extract insights from research papers.
-            
-            The paper below consists of the main written content (from the body of the PDF)
-            
-            Your task is to read the paper and provide a short summary that accomplishes the task: {context}
-
-            If the paper is irrelevant to the task, then just state it as such.
-            
-            Here is the paper content:
-            
-            {paper}
+            You are a scientific assistant responsible for summarizing extracts from research papers, in the context of the following task: {context}
+        
+            Summarize the retrieved scientific content below.
+        
+            {retrieved_content}
             """)
+            
         chain = prompt | self.llm | StrOutputParser()
     
         for paper in state["papers"]:
             arxiv_id = paper["arxiv_id"]
-            summary_filename = os.path.join('database_summaries', f"{arxiv_id}_summary.txt")
+            summary_filename = os.path.join(self.summaries_path, f"{arxiv_id}_summary.txt")
+            
             if os.path.exists(summary_filename):
                 with open(summary_filename, 'r') as f:
                     summaries.append(f.read())
 
             else:
                 try:
-                    summary = chain.invoke({"paper": paper["full_text"], "context":state["context"]})
+                    retriever = self._get_or_build_vectorstore(paper["full_text"], arxiv_id)
+                    relevant_docs = retriever.invoke(state["context"])
+                    retrieved_content = "\n\n".join([doc.page_content for doc in relevant_docs])
+                    summary = chain.invoke({"retrieved_content": retrieved_content, "context": state["context"]})
                     
                 except Exception as e:
                     summary = f"Error summarizing paper: {e}"
@@ -237,11 +260,10 @@ class ArxivAgent(BaseAgent):
         with open('summaries_combined.txt', "w") as f:
             f.write(combined)
 
-
         prompt = ChatPromptTemplate.from_template("""
             You are a scientific assistant helping extract insights from summaries of research papers.
             
-            Here are the summaries of a large number of scientific papers:
+            Here are the summaries of a large number of extracts from scientific papers:
 
             {Summaries}
             
@@ -271,13 +293,11 @@ class ArxivAgent(BaseAgent):
             builder.add_edge("fetch_papers", "summarize_each")
             builder.add_edge("summarize_each", "aggregate")
             builder.set_finish_point("aggregate")
-            #builder.set_finish_point("summarize_each")
 
         else:
             builder.set_entry_point("fetch_papers")
             builder.set_finish_point("fetch_papers")
-    
-
+            
         graph = builder.compile()
         return graph
 

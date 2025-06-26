@@ -21,9 +21,12 @@ def main():
 
     
     agent = ArxivAgent(llm=llm, summarize = True, process_images = False, 
-                       max_results = 100,   
-                       database_dir='database',
-                       download_papers=False)
+                       max_results        = 100,   
+                       database_path      ='database',
+                       summaries_path     ='database_summaries', 
+                       vectorstore_path   ='vectorstores', 
+                       download_papers    = False)
+    
 
     t0 = time.time()
     
