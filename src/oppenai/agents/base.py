@@ -1,12 +1,17 @@
 from langchain_community.chat_models import ChatLiteLLM
 from langchain_core.language_models.chat_models import BaseChatModel
+from langgraph.checkpoint.base import BaseCheckpointSaver
 
 
 class BaseAgent:
     # llm: BaseChatModel
     # llm_with_tools: Runnable[LanguageModelInput, BaseMessage]
 
-    def __init__(self, llm: str | BaseChatModel, **kwargs):
+    def __init__(self, 
+    llm: str | BaseChatModel, 
+    checkpointer: BaseCheckpointSaver = None,
+    **kwargs
+    ):
         match llm:
             case BaseChatModel():
                 self.llm = llm
@@ -24,3 +29,6 @@ class BaseAgent:
                 raise TypeError(
                     "llm argument must be a string with the provider and model, or a BaseChatModel instance."
                 )
+
+        self.checkpointer = checkpointer
+        self.thread_id = self.__class__.__name__

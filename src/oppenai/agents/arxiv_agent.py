@@ -179,7 +179,7 @@ class ArxivAgent(BaseAgent):
         chain = prompt | self.llm | StrOutputParser()
     
         for paper in state["papers"]:
-            summary = chain.invoke({"paper": paper["full_text"], "context":state["context"]})
+            summary = chain.invoke({"paper": paper["full_text"], "context":state["context"]}, {"configurable": {"thread_id": self.thread_id}})
             summaries.append(summary)
     
         return {**state, "summaries": summaries}
@@ -206,13 +206,13 @@ class ArxivAgent(BaseAgent):
         builder.add_edge("fetch_papers", "summarize_each")
         builder.add_edge("summarize_each", "aggregate")
         builder.set_finish_point("aggregate")
-
-        graph = builder.compile()
+        
+        graph = builder.compile(checkpointer=self.checkpointer)
         # graph.get_graph().draw_mermaid_png(output_file_path="arxiv_agent_graph.png", draw_method=MermaidDrawMethod.PYPPETEER)
         return graph
 
     def run(self, arxiv_search_query: str, context: str, recursion_limit=100) -> str:
-        result = self.graph.invoke({"query": arxiv_search_query, "context":context}, {"recursion_limit":recursion_limit})
+        result = self.graph.invoke({"query": arxiv_search_query, "context":context}, {"recursion_limit":recursion_limit, "configurable": {"thread_id": self.thread_id}})
         return result.get("final_summary", "No summary generated.")
 
 

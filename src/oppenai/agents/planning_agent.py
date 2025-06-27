@@ -44,7 +44,7 @@ class PlanningAgent(BaseAgent):
             messages[0] = SystemMessage(content=self.planner_prompt)
         else:
             messages = [SystemMessage(content=self.planner_prompt)] + messages
-        return {"messages": [self.llm.invoke(messages)]}
+        return {"messages": [self.llm.invoke(messages, {"configurable": {"thread_id": self.thread_id}})]}
 
     def formalize_node(self, state: PlanningState) -> PlanningState:
         cls_map = {"ai": HumanMessage, "human": AIMessage}
@@ -55,7 +55,7 @@ class PlanningAgent(BaseAgent):
         translated = [SystemMessage(content=self.formalize_prompt)] + translated
         for _ in range(10):
             try:
-                res = self.llm.invoke(translated)
+                res = self.llm.invoke(translated, {"configurable": {"thread_id": self.thread_id}})
                 json_out = extract_json(res.content)
                 break
             except ValueError:
@@ -76,7 +76,7 @@ class PlanningAgent(BaseAgent):
             for msg in state["messages"][1:]
         ]
         translated = [SystemMessage(content=reflection_prompt)] + translated
-        res = self.llm.invoke(translated)
+        res = self.llm.invoke(translated, {"configurable": {"thread_id": self.thread_id}})
         return {"messages": [HumanMessage(content=res.content)]}
 
     def _initialize_agent(self):
@@ -97,12 +97,12 @@ class PlanningAgent(BaseAgent):
 
         # memory      = MemorySaver()
         # self.action = self.graph.compile(checkpointer=memory)
-        self.action = self.graph.compile()
+        self.action = self.graph.compile(checkpointer=self.checkpointer)
         # self.action.get_graph().draw_mermaid_png(output_file_path="planning_agent_graph.png", draw_method=MermaidDrawMethod.PYPPETEER)
     
     def run(self, prompt,recursion_limit=100):
         initial_state = {"messages": [HumanMessage(content=prompt)]}
-        return self.action.invoke(initial_state, {"recursion_limit":recursion_limit})
+        return self.action.invoke(initial_state, {"recursion_limit":recursion_limit, "configurable": {"thread_id": self.thread_id}})
 
 
 config = {"configurable": {"thread_id": "1"}}
