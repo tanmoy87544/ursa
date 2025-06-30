@@ -1,0 +1,41 @@
+import sys
+
+from langchain_community.chat_models import ChatLiteLLM
+from langchain_core.messages import HumanMessage
+
+from oppenai.agents import ArxivAgent
+from oppenai.agents import ExecutionAgent
+
+
+def main():
+    model = ChatLiteLLM(
+        model="openai/o3",
+        max_tokens=50000,
+    )
+
+    agent  = ArxivAgent(llm= model, max_results = 5)
+    result = agent.run(arxiv_search_query="Experimental Constraints on neutron star radius", 
+                       context="What are the constraints on the neutron star radius and what uncertainties are there on the constraints?")
+    print(result)
+    executor = ExecutionAgent(llm=model)
+    exe_plan = f"""
+    The following is the summaries of research papers on the contraints on neutron
+    star radius: 
+    {result}
+
+    Summarize the results in a markdown document. Include a plot of the data extracted from the papers. This 
+    will be reviewed by experts in the field so technical accuracy and clarity is 
+    critical.
+    """
+    
+    init = {"messages":[HumanMessage(content=exe_plan)]}
+
+    final_results = executor.action.invoke(init)
+    
+    for x in final_results["messages"]:
+        print(x.content)
+    
+
+
+if __name__ == "__main__":
+    main()
