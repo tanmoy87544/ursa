@@ -56,9 +56,13 @@ class ResearchAgent(BaseAgent):
         self.research_prompt = research_prompt
         self.reflection_prompt = reflection_prompt
         self.tools = [search_tool, process_content]  # + cb_tools
+        self.has_internet = self._check_for_internet(kwargs.get("url","http://www.lanl.gov"))
         self._initialize_agent()
 
     def review_node(self, state: ResearchState) -> ResearchState:
+        if not self.has_internet:
+            return {"messages":[HumanMessage(content="No internet for Research Agent so no research to review.")], "urls_visited": []}
+        
         translated = [SystemMessage(content=reflection_prompt)] + state[
             "messages"
         ]
@@ -66,6 +70,9 @@ class ResearchAgent(BaseAgent):
         return {"messages": [HumanMessage(content=res.content)]}
 
     def response_node(self, state: ResearchState) -> ResearchState:
+        if not self.has_internet:
+            return {"messages":[HumanMessage(content="No internet for Research Agent. No research carried out.")], "urls_visited": []}
+
         messages = state["messages"] + [SystemMessage(content=summarize_prompt)]
         response = self.llm.invoke(messages, {"configurable": {"thread_id": self.thread_id}})
 
@@ -75,6 +82,16 @@ class ResearchAgent(BaseAgent):
                 if "url" in message.tool_calls[0]["args"]:
                     urls_visited.append(message.tool_calls[0]["args"]["url"])
         return {"messages": [response.content], "urls_visited": urls_visited}
+    
+    def _check_for_internet(self, url, timeout=2):
+        """
+        Checks for internet connectivity by attempting an HTTP GET request.
+        """
+        try:
+            requests.get(url, timeout=timeout)
+            return True
+        except (requests.ConnectionError, requests.Timeout):
+            return False
 
     def _initialize_agent(self):
         self.graph = StateGraph(ResearchState)
@@ -104,6 +121,8 @@ class ResearchAgent(BaseAgent):
         # self.action.get_graph().draw_mermaid_png(output_file_path="./research_agent_graph.png", draw_method=MermaidDrawMethod.PYPPETEER)
     
     def run(self, prompt, recursion_limit=100):
+        if not self.has_internet:
+            return {"messages":[HumanMessage(content="No internet for Research Agent. No research carried out.")]}
         inputs = {
             "messages": [HumanMessage(content=prompt)],
             "model": self.llm,
