@@ -17,6 +17,7 @@ from langgraph.graph.message import add_messages
 from langgraph.prebuilt import InjectedState, ToolNode
 from typing_extensions import TypedDict
 
+from litellm import ContentPolicyViolationError
 from ..prompt_library.execution_prompts import executor_prompt, summarize_prompt
 from .base import BaseAgent
 
@@ -67,13 +68,19 @@ class ExecutionAgent(BaseAgent):
             new_state["messages"] = [
                 SystemMessage(content=self.executor_prompt)
             ] + state["messages"]
-        response = self.llm.invoke(messages, {"configurable": {"thread_id": self.thread_id}})
+        try:
+            response = self.llm.invoke(messages, {"configurable": {"thread_id": self.thread_id}})
+        except ContentPolicyViolationError as e:
+            print("Error: ", e, " ",messages[-1].content)
         return {"messages": [response], "workspace": new_state["workspace"]}
 
     # Define the function that calls the model
     def summarize(self, state: ExecutionState) -> ExecutionState:
         messages = [SystemMessage(content=summarize_prompt)] + state["messages"]
-        response = self.llm.invoke(messages, {"configurable": {"thread_id": self.thread_id}})
+        try:
+            response = self.llm.invoke(messages, {"configurable": {"thread_id": self.thread_id}})
+        except ContentPolicyViolationError as e:
+            print("Error: ", e, " ",messages[-1].content)
         return {"messages": [response.content]}
 
     # Define the function that calls the model
