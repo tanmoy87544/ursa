@@ -19,6 +19,13 @@ from openai import OpenAI
 
 from .base import BaseAgent
 
+# --- ANSI color codes ---
+GREEN = "\033[92m"
+BLUE = "\033[94m"
+RED = "\033[91m"
+RESET = "\033[0m"
+BOLD = "\033[1m"
+
 
 # === OpenAI Vision Client ===
 client = OpenAI()
@@ -99,6 +106,7 @@ class ArxivAgent(BaseAgent):
         self.graph = self._build_graph()
 
     def _fetch_papers(self, query: str) -> List[PaperMetadata]:
+        print(f"{BOLD}{BLUE}ArXiv Agent beginning workflow{RESET}")
         encoded_query = quote(query)
         url = f"http://export.arxiv.org/api/query?search_query=all:{encoded_query}&start=0&max_results={self.max_results}"
         feed = feedparser.parse(url)
@@ -179,6 +187,7 @@ class ArxivAgent(BaseAgent):
         chain = prompt | self.llm | StrOutputParser()
     
         for paper in state["papers"]:
+            print(f"{BOLD}Summarizing paper: {RED}: {paper['arxiv_id']} - {paper['title']} {RESET}" )
             summary = chain.invoke({"paper": paper["full_text"], "context":state["context"]})
             summaries.append(summary)
     
@@ -212,7 +221,7 @@ class ArxivAgent(BaseAgent):
         return graph
 
     def run(self, arxiv_search_query: str, context: str, recursion_limit=100) -> str:
-        result = self.graph.invoke({"query": arxiv_search_query, "context":context}, {"recursion_limit":recursion_limit})
+        result = self.graph.invoke({"query": arxiv_search_query, "context":context}, config={"recursion_limit":recursion_limit})
         return result.get("final_summary", "No summary generated.")
 
 
