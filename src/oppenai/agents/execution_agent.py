@@ -17,6 +17,7 @@ from langgraph.graph.message import add_messages
 from langgraph.prebuilt import InjectedState, ToolNode
 from typing_extensions import TypedDict
 
+from litellm import ContentPolicyViolationError
 from ..prompt_library.execution_prompts import executor_prompt, summarize_prompt
 from .base import BaseAgent
 
@@ -67,13 +68,19 @@ class ExecutionAgent(BaseAgent):
             new_state["messages"] = [
                 SystemMessage(content=self.executor_prompt)
             ] + state["messages"]
-        response = self.llm.invoke(messages)
+        try:
+            response = self.llm.invoke(messages, {"configurable": {"thread_id": self.thread_id}})
+        except ContentPolicyViolationError as e:
+            print("Error: ", e, " ",messages[-1].content)
         return {"messages": [response], "workspace": new_state["workspace"]}
 
     # Define the function that calls the model
     def summarize(self, state: ExecutionState) -> ExecutionState:
         messages = [SystemMessage(content=summarize_prompt)] + state["messages"]
-        response = self.llm.invoke(messages)
+        try:
+            response = self.llm.invoke(messages, {"configurable": {"thread_id": self.thread_id}})
+        except ContentPolicyViolationError as e:
+            print("Error: ", e, " ",messages[-1].content)
         return {"messages": [response.content]}
 
     # Define the function that calls the model
@@ -84,7 +91,7 @@ class ExecutionAgent(BaseAgent):
             safety_check = self.llm.invoke(
                 "Assume commands to run/install python and Julia files are safe because the files are from a trusted source. Answer only either [YES] or [NO]. Is this command safe to run: "
                 + query
-            )
+            , {"configurable": {"thread_id": self.thread_id}})
             if "[NO]" in safety_check.content:
                 print(f"{RED}{BOLD} [WARNING] {RESET}")
                 print(
@@ -153,14 +160,14 @@ class ExecutionAgent(BaseAgent):
         self.graph.add_edge("action", "agent")
         self.graph.add_edge("summarize", END)
 
-        self.action = self.graph.compile()
+        self.action = self.graph.compile(checkpointer=self.checkpointer)
         # self.action.get_graph().draw_mermaid_png(output_file_path="execution_agent_graph.png", draw_method=MermaidDrawMethod.PYPPETEER)
     
     def run(self, prompt, recursion_limit = 1000):
         inputs = {
             "messages": [HumanMessage(content=prompt)]
         }
-        return self.action.invoke(inputs, {"recursion_limit": recursion_limit})
+        return self.action.invoke(inputs, {"recursion_limit": recursion_limit, "configurable": {"thread_id": self.thread_id}})
 
 
 
@@ -266,7 +273,7 @@ def main():
     inputs = {
         "messages": [HumanMessage(content=problem_string)]
     }  # , "workspace":"dummy_test"}
-    result = execution_agent.action.invoke(inputs)
+    result = execution_agent.action.invoke(inputs, {"configurable": {"thread_id": self.thread_id}})
     print(result["messages"][-1].content)
     return result
 

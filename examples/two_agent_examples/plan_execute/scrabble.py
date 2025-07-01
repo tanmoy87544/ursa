@@ -1,10 +1,12 @@
 import sys
+from pathlib import Path
+import sqlite3
 
 from langchain_community.chat_models import ChatLiteLLM
+from langgraph.checkpoint.sqlite import SqliteSaver
 from langchain_core.messages import HumanMessage
 
 from oppenai.agents import ExecutionAgent, PlanningAgent
-
 
 # rich console stuff for beautification
 from rich.console import Console
@@ -53,16 +55,24 @@ def main(mode: str):
             max_retries=2,
         )
 
+        db_path = Path(workspace) / "checkpoint.db"
+        db_path.parent.mkdir(parents=True, exist_ok=True)
+        conn = sqlite3.connect(str(db_path), check_same_thread=False)
+        checkpointer = SqliteSaver(conn)
+        
         # Initialize the agents
-        planner = PlanningAgent(llm=model)
-        executor = ExecutionAgent(llm=model)
+        planner = PlanningAgent(llm=model, checkpointer=checkpointer)
+        executor = ExecutionAgent(llm=model, checkpointer=checkpointer)
 
         # 3. top level planning
         # planning agent . . .
         with console.status("[bold green]Planning overarching steps . . .", spinner="point"):
             planning_output = planner.action.invoke(
                 {"messages": [HumanMessage(content=problem)]}, 
-                {"recursion_limit": 999999}
+                {
+                    "recursion_limit": 999_999,
+                    "configurable": { "thread_id": planner.thread_id }
+                },
             )
 
         console.print(Panel(planning_output["messages"][-1].content, title="[yellow]📋 Plan"))
@@ -105,7 +115,10 @@ def main(mode: str):
 
                 detail_output = planner.action.invoke(
                     {"messages": [HumanMessage(content=step_prompt)]},
-                    {"recursion_limit": 999_999},
+                    {
+                        "recursion_limit": 999_999,
+                        "configurable": { "thread_id": planner.thread_id }
+                    },
                 )
 
                 # ---- sub-steps execution --------------------------------------------
@@ -135,7 +148,10 @@ def main(mode: str):
                             "messages": [HumanMessage(content=sub_prompt)],
                             "workspace": workspace,
                         },
-                        {"recursion_limit": 999_999},
+                        {
+                            "recursion_limit": 999_999,
+                            "configurable": { "thread_id": executor.thread_id }
+                        },
                     )
 
                     last_sub_summary = final_results["messages"][-1].content

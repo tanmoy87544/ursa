@@ -69,7 +69,7 @@ class CodeReviewAgent(BaseAgent):
         new_state["messages"] = [
             SystemMessage(content=plan_review_prompt)
         ] + state["messages"]
-        response = self.llm.invoke(new_state["messages"])
+        response = self.llm.invoke(new_state["messages"], {"configurable": {"thread_id": self.thread_id}})
         return {"messages": [response]}
 
     # Define the function that calls the model
@@ -84,13 +84,13 @@ class CodeReviewAgent(BaseAgent):
         new_state["messages"].append(
             HumanMessage(content=f"Please review {filename}")
         )
-        response = self.llm.invoke(new_state["messages"])
+        response = self.llm.invoke(new_state["messages"], {"configurable": {"thread_id": self.thread_id}})
         return {"messages": [response]}
 
     # Define the function that calls the model
     def summarize(self, state: CodeReviewState) -> CodeReviewState:
         messages = [SystemMessage(content=summarize_prompt)] + state["messages"]
-        response = self.llm.invoke(messages)
+        response = self.llm.invoke(messages, {"configurable": {"thread_id": self.thread_id}})
         return {"messages": [response.content]}
 
     def increment(self, state: CodeReviewState) -> CodeReviewState:
@@ -114,7 +114,8 @@ class CodeReviewAgent(BaseAgent):
                     "the files are from a trusted source. "
                     "Answer only either [YES] or [NO]. Is this command safe to run: "
                 )
-                + query
+                + query,
+                {"configurable": {"thread_id": self.thread_id}}
             )
             if "[NO]" in safety_check.content:
                 print(f"{RED}{BOLD} [WARNING] {RESET}")
@@ -187,8 +188,8 @@ class CodeReviewAgent(BaseAgent):
         self.graph.add_edge("action", "file_review")
         self.graph.add_edge("increment", "file_review")
         self.graph.add_edge("summarize", END)
-
-        self.action = self.graph.compile()
+        
+        self.action = self.graph.compile(checkpointer=self.checkpointer)
         # self.action.get_graph().draw_mermaid_png(output_file_path="code_review_agent_graph.png", draw_method=MermaidDrawMethod.PYPPETEER)
     
     def run(self, prompt, workspace):
@@ -201,7 +202,7 @@ class CodeReviewAgent(BaseAgent):
             "iteration": 0,
             "workspace":workspace
         }
-        return self.action.invoke(initial_state)
+        return self.action.invoke(initial_state, {"configurable": {"thread_id": self.thread_id}})
 
 
 @tool
@@ -321,7 +322,7 @@ def main():
         "edited_files": [],
         "iteration": 0,
     }
-    result = code_review_agent.action.invoke(initial_state)
+    result = code_review_agent.action.invoke(initial_state), {"configurable": {"thread_id": self.thread_id}}
     for x in result["messages"]:
         print(x.content)
     return result

@@ -29,6 +29,6 @@ print("Final summary: \n", research_output["messages"][-1].content)
 # for x in research_output["messages"]:
 #     print(x.content)
 
-print("Citations: \n", [x for x in research_output.get("urls_visited", None)])
+print("Citations: \n", [x for x in research_output.get("urls_visited", [])])
 
 
