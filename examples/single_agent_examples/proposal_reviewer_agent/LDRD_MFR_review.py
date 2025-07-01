@@ -17,8 +17,8 @@ import litellm, httpx
 CA_BUNDLE = os.getenv("CA_BUNDLE")
 litellm.client_session = httpx.Client(verify=CA_BUNDLE)
 
-# proposal_dir="../../../../LDRD_Review_MFR_2025/CUI_LDRD_FY25_MFR_PHASE1_INPUT/proposal_PDFs/non-CUI_cover_sheets_and_proposals_70proposals"
-proposal_dir="../../../../LDRD_Review_MFR_2025/CUI_LDRD_FY25_MFR_PHASE1_INPUT/proposal_PDFs/nate_testing"
+proposal_dir="../../../../LDRD_Review_MFR_2025/CUI_LDRD_FY25_MFR_PHASE1_INPUT/proposal_PDFs/non-CUI_cover_sheets_and_proposals_70proposals"
+# proposal_dir="../../../../LDRD_Review_MFR_2025/CUI_LDRD_FY25_MFR_PHASE1_INPUT/proposal_PDFs/nate_testing"
 
 console = Console()          # global console object
 
@@ -60,7 +60,11 @@ def main():
         openai_api_key=os.getenv("SN_LLM_API_KEY"), # your API key
         max_tokens=50_000,
         max_retries=2,
-        temperature=0.99,
+        cache=False,
+        # I can't get any of these temperature values to mean a damned thing w/
+        # the llama 3.3 70B instruct
+        # temperature=0.8,
+        # top_k=50, top_p=1.0,
     )
     # let's print out the model to give ourselves some confidence
 

@@ -27,6 +27,10 @@ from .base import BaseAgent
 import pathlib, hashlib, os
 from pathlib import Path
 
+import time
+from datetime import datetime
+import pandas as pd
+from pydantic import confloat
 
 import json # for prepping for LLM
 
@@ -90,6 +94,21 @@ class ProposalManifest(TypedDict, total=False):
     topic_areas: List[str]      # from the LLM, CFP conformance test
     trl_level: int
     trl_level_reasoning: str
+    # NOTE NOTE NOTE
+    # the above is not ALL that's in this 'struct', there will be dynamically
+    # added values based on this particular CFP structure - for instance, it
+    # might look like this - these are for a particular CFP we are testing with
+    # but a different CFP will/might have different scoring areas (e.g. might
+    # not be 'technical_vitality' but might be called 'scientific_approach'
+    # or something)
+    # "technical_vitality_score": 4,
+    # "technical_vitality_reasoning": "...",
+    # "mission_agility_score": 3,
+    # "mission_agility_reasoning": "...",
+    # "workforce_development_score": 5,
+    # "workforce_development_reasoning": "...",
+    # "research_approach_score": 4,
+    # "research_approach_reasoning": "..."
 
 class ReviewState(TypedDict, total=False):
     ######################################################
@@ -181,6 +200,7 @@ class ProposalReviewerAgent(BaseAgent):
                     # and some specific things missing from what I'd call a normal CFP, for instance
                     # there's nothing about who are acceptable people to submit, funding level, etc
                     # so this prompt is pretty specific to that task.
+                    "<!-- {unique_query_id} -->"
                     "You are a senior grants analyst with 15 years of experience "
                     "reviewing government and industry Calls-for-Proposals (CFPs).\n"
                     "Your job: distill each CFP-call into a concise, structured briefing "
@@ -232,7 +252,10 @@ class ProposalReviewerAgent(BaseAgent):
                 console=console,
             ) as progress:
                 task = progress.add_task(f"Summarizing CFP . . .", total=None)
-                summary = chain.invoke({"proposal_call_raw_text": call_text})
+                summary = chain.invoke({
+                    "unique_query_id": str(time.time()),
+                    "proposal_call_raw_text": call_text
+                    })
                 progress.update(task, description="[green]✓ CFP summarized")
             return summary
 
@@ -319,6 +342,7 @@ class ProposalReviewerAgent(BaseAgent):
             (
                 "system",
                 (
+                    "<!-- {unique_query_id} -->"
                     "You are a senior grants analyst with 15 years of experience reviewing CFPs.\n"
                     "Read the CFP summary and proposal text, then decide if the proposal is in scope.\n"
                     "Return **only** a JSON object that matches the provided schema; no markdown or extra text."
@@ -358,6 +382,7 @@ class ProposalReviewerAgent(BaseAgent):
             ) as progress:
                 task = progress.add_task(f"Evaluating proposal {manifest['filename']} for in/out of scope . . .", total=None)
                 summary = chain.invoke({
+                    "unique_query_id": str(time.time()),
                     "format_instructions": format_instructions,
                     "proposal_call_summary": proposal_call_summary, 
                     "proposal_raw_text": proposal_raw_text})
@@ -427,6 +452,7 @@ class ProposalReviewerAgent(BaseAgent):
             (
                 "system",
                 (
+                    "<!-- {unique_query_id} -->"
                     "You are a senior grants analyst with 15 years of experience reviewing CFPs.\n"
                     "Read the CFP summary and proposal text, then decide the TRL level of the work.\n"
                     "Return **only** a JSON object that matches the provided schema; no markdown or extra text."
@@ -466,6 +492,7 @@ class ProposalReviewerAgent(BaseAgent):
             ) as progress:
                 task = progress.add_task(f"Evaluating proposal {manifest['filename']} for TRL determination . . .", total=None)
                 summary = chain.invoke({
+                    "unique_query_id": str(time.time()),
                     "format_instructions": format_instructions,
                     "trl_levels": trl_levels_json_str, 
                     "proposal_raw_text": proposal_raw_text})
@@ -483,7 +510,7 @@ class ProposalReviewerAgent(BaseAgent):
         console.print(f'                                  at API endpoint: [bold cyan]{api_base}')
         trl_levels_json_str = json.dumps(trl_levels_in_json, indent=2)
         eval_response = eval_for_trl(format_instructions, trl_levels_json_str, proposal_raw_text)
-        console.print(f"[green]✓ proposal {manifest['filename']} evaluated for in/out of scope.")
+        console.print(f"[green]✓ proposal {manifest['filename']} evaluated for TRL determination.")
 
         def to_pretty_json(pydantic_obj) -> str:
             # v1 path
@@ -543,8 +570,8 @@ class ProposalReviewerAgent(BaseAgent):
             
         review_criteria_json = _read_review_criteria_json(review_criteria_json_filename)      
 
-        print("\n=== JSON version ===\n")
-        print(review_criteria_json)
+        # print("\n=== JSON version ===\n")
+        # print(review_criteria_json)
 
         json_str = to_pretty_json(review_criteria_json)
 
@@ -567,7 +594,7 @@ class ProposalReviewerAgent(BaseAgent):
         for cat in rubric["categories"]:
             safe = cat["name"].lower().replace(" ", "_")
             fields[f"{safe}_score"] = (
-                int,
+                confloat(multiple_of=0.1),  # 0.0, 0.1, …, 9.9
                 Field(..., description=f"{cat['name']} numeric score"),
             )
             fields[f"{safe}_reasoning"] = (
@@ -596,17 +623,133 @@ class ProposalReviewerAgent(BaseAgent):
             "proposal_review_parser": parser,      # anything downstream can import this
         }
     
+    def _evaluate_proposal_for_review(
+        self,
+        manifest: ProposalManifest,
+        rubric: dict,
+        proposal_review_parser,          # <- the parser you stored in state
+    ):
+        """LLM-evaluate one proposal against the rubric and return a ProposalReview model."""
 
+        # -------------------------------------------------------
+        # 1.  Pull proposal text
+        # -------------------------------------------------------
+        proposal_raw_text = manifest["raw_text"]
 
+        # -------------------------------------------------------
+        # 2.  Wrap the parser with OutputFixingParser
+        #     (so we auto-repair bad JSON)
+        # -------------------------------------------------------
+        parser_base  = proposal_review_parser          # dynamic Pydantic parser
+        parser       = OutputFixingParser.from_llm(parser=parser_base, llm=self.llm)
+        fmt_instr    = parser_base.get_format_instructions()
 
-# NATHAN NOTES ON THURSDAY
-# MY NEXT STEP - WE HAVE READ IN THE CRITERIA AS THE PROPOSAL_REVIEW_PARSER ABOVE. AND WE HAVE THE RUBRIC SAVED.
-# NEXT FOR EACH PROPOSAL, HAVE IT USE THE RUBRIC AND RESPOND.
+        # -------------------------------------------------------
+        # 3.  Build the prompt
+        # -------------------------------------------------------
+        prompt = ChatPromptTemplate.from_messages(
+            [
+                (
+                    "system",
+                    (
+                        "<!-- {unique_query_id} --> "
+                        "You are a senior proposal reviewer. Use the rubric provided to score "
+                        "each category and give two-paragraph rationales. "
+                        "Please be critical - harsh when necessary, but not needlessly cruel.  "
+                        "Please be *specific*, we are not interested in general vague responses - "
+                        "we need reviews that are actionable and critical for the authors.  "
+                        "Do not simply review everything at the highest level unless it really "
+                        "warrants it.  "
+                        "Reply ONLY with a JSON object that matches the schema; "
+                        "no markdown or extraneous text."
+                    ),
+                ),
+                (
+                    "human",
+                    (
+                        "<<<RUBRIC>>>\\n{rubric_json}\\n<<<END RUBRIC>>>\\n"
+                        "<<<PROPOSAL>>>\\n{proposal_raw_text}\\n<<<END PROPOSAL>>>\\n\\n"
+                        "{format_instructions}"
+                    ),
+                ),
+            ]
+        )
 
+        # -------------------------------------------------------
+        # 4.  Build the runnable chain
+        # -------------------------------------------------------
+        chain = prompt | self.llm | parser
+
+        # -------------------------------------------------------
+        # 5.  Run with a nice spinner
+        # -------------------------------------------------------
+        rubric_json_str = json.dumps(rubric, indent=2)
+
+        with Progress(
+            SpinnerColumn(spinner_name="dots", style="cyan"),
+            TextColumn("[progress.description]{task.description}"),
+            TimeElapsedColumn(),
+            console=console,
+            transient=True,
+        ) as prog:
+            task = prog.add_task(
+                f"Reviewing {manifest['filename']} …", total=None
+            )
+            result = chain.invoke(
+                {
+                    "unique_query_id": str(time.time()),
+                    "rubric_json": rubric_json_str,
+                    "proposal_raw_text": proposal_raw_text,
+                    "format_instructions": fmt_instr,
+                }
+            )
+            prog.update(task, description=f"[green]✓ {manifest['filename']} reviewed")
+
+        # -------------------------------------------------------
+        # 6.  Pretty-print the JSON and show a panel (optional)
+        # -------------------------------------------------------
+        json_str = json.dumps(result.model_dump(), indent=2)   # v2; use .dict() in v1
+
+        console.print(
+            Panel(
+                Syntax(json_str, "json", word_wrap=True),
+                title=f"Full Review – {manifest['filename']}",
+                border_style="bright_green",
+                box=box.ROUNDED,
+            )
+        )
+
+        return result        # a ProposalReview pydantic object
+
+        
+    def _evaluate_proposals_for_review(self, state: ReviewState) -> ReviewState:
+        manifests             = state["proposal_manifests"]
+        total                 = len(manifests)
+        rubric = state['rubric']
+        proposal_review_parser = state['proposal_review_parser']
+
+        for idx, manifest in enumerate(manifests, start=1):
+            console.print(f"[cyan]Processing proposal {idx}/{total} for full review . . .")
+            result = self._evaluate_proposal_for_review(
+                manifest, rubric, proposal_review_parser
+            )
+
+            manifest.update(result.model_dump()) # copies the dynamic fields in
+
+        return {**state}
 
 
     def _aggregate_node(self, state: ReviewState) -> ReviewState:
         console.print("[bold underline cyan]\n=== Proposals Analysis ===\n")
+
+        rubric = state.get("rubric", {})          # keep the dynamic bit flexible
+        categories = rubric.get("categories", [])
+
+        # pre-compute the safe field names that the LLM/model used
+        cat_fields = [
+            cat["name"].lower().replace(" ", "_")  # e.g. technical_vitality
+            for cat in categories
+        ]
     
         for m in state["proposal_manifests"]:
             # ----------- build the inner table ----------
@@ -636,6 +779,30 @@ class ProposalReviewerAgent(BaseAgent):
             trl_reason = Text(m.get("trl_level_reasoning", "—"), style="bright_white", overflow="fold")
             grid.add_row("TRL Reasoning:", trl_reason)
 
+
+            # ---------- dynamic rubric rows ----------
+            for safe, cat in zip(cat_fields, categories):
+                score_key      = f"{safe}_score"
+                reason_key     = f"{safe}_reasoning"
+                score          = m.get(score_key, "—")
+                reasoning_text = m.get(reason_key, "—")
+
+                # colour score by threshold
+                if isinstance(score, (int, float)):
+                    score_style = (
+                        "bold green"  if score >= 4 else
+                        "bold yellow" if score == 3 else
+                        "bold red"
+                    )
+                else:
+                    score_style = "bright_white"
+
+                grid.add_row(f"{cat['name']} Score:",
+                            Text(str(score), style=score_style))
+                grid.add_row(f"{cat['name']} Reason:",
+                            Text(reasoning_text, style="bright_white", overflow="fold"))
+
+
             # ----------- wrap table in a panel ----------
             panel = Panel(
                 grid,
@@ -648,8 +815,42 @@ class ProposalReviewerAgent(BaseAgent):
             console.print(panel)
 
         return {**state}
-
     
+
+    def _export_reviews_to_csv(self, state: ReviewState) -> ReviewState:
+        manifests = state["proposal_manifests"]
+
+        # Build DataFrame from ALL keys
+        df = pd.DataFrame(manifests)
+
+        # we don't want these fields
+        for col in ("raw_text","path"):
+            if col in df.columns:
+                df.drop(columns=[col], inplace=True)
+
+        # Flatten topic_areas list → comma-separated string
+        if "topic_areas" in df.columns:
+            df["topic_areas"] = df["topic_areas"].apply(
+                lambda lst: ", ".join(lst) if isinstance(lst, list) else lst
+            )
+
+        # Timestamped filename
+        ts = datetime.now().strftime("%Y-%m-%d_%H-%M")
+        out_path = Path(f"proposals_review_{ts}.csv").resolve()
+        df.to_csv(out_path, index=False)
+
+        console.print(
+            Panel(
+                f"[green]✓ CSV exported to {out_path}",
+                border_style="cyan",
+                box=box.ROUNDED,
+            )
+        )
+
+        # keep path in state if later nodes need it
+        return {**state, "reviews_csv": str(out_path)}
+    
+        
     def _build_graph(self):
         builder = StateGraph(ReviewState)
         
@@ -659,17 +860,18 @@ class ProposalReviewerAgent(BaseAgent):
         # uses the LLM to summarize the CFP into topics, R&D targets, etc
         builder.add_node("summarize_proposal_call", self._summarize_proposal_call_node)
 
-        # reads the proposal review criteria
-        builder.add_node("read_review_criteria", self._read_review_criteria_node)
-
         # let's start looking at the proposals themselves that were submitted for review
         builder.add_node("collect_proposal_pdfs", self._collect_proposal_pdfs)
         # this node evaluates a single proposal, seeing if it's responsive to the call
         builder.add_node("evaluate_proposals_for_CFP_conformance", self._evaluate_proposals_for_CFP_conformance)
         builder.add_node("evaluate_proposals_for_TRL_determination", self._evaluate_proposals_for_TRL_determination)
 
-        # builder.add_node("read_review_criteria", self._read_review_criteria_node)
+        # reads the proposal review criteria
+        builder.add_node("read_review_criteria", self._read_review_criteria_node)
+        builder.add_node("evaluate_proposals_for_review", self._evaluate_proposals_for_review)
+
         builder.add_node("aggregate", self._aggregate_node)
+        builder.add_node("export_to_csv", self._export_reviews_to_csv)
 
 
         builder.set_entry_point("read_proposal_call")
@@ -685,8 +887,11 @@ class ProposalReviewerAgent(BaseAgent):
         # step 5: next let's evaluate all the proposals for in/out of scope
         builder.add_edge("evaluate_proposals_for_CFP_conformance", "evaluate_proposals_for_TRL_determination")
         # step 6: then determine the TRL
-        builder.add_edge("evaluate_proposals_for_TRL_determination", "aggregate")
-        builder.set_finish_point("aggregate")
+        builder.add_edge("evaluate_proposals_for_TRL_determination", "read_review_criteria")
+        builder.add_edge("read_review_criteria", "evaluate_proposals_for_review")
+        builder.add_edge("evaluate_proposals_for_review", "aggregate")
+        builder.add_edge("aggregate", "export_to_csv")
+        builder.set_finish_point("export_to_csv")
 
 
         graph = builder.compile()
