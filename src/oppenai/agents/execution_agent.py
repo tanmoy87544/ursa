@@ -58,8 +58,7 @@ class ExecutionAgent(BaseAgent):
                 f"{RED}Creating the folder {BLUE}{BOLD}{new_state['workspace']}{RESET}{RED} for this project.{RESET}"
             )
         os.makedirs(new_state["workspace"], exist_ok=True)
-
-        messages = state["messages"]
+        
         if type(new_state["messages"][0]) == SystemMessage:
             new_state["messages"][0] = SystemMessage(
                 content=self.executor_prompt
@@ -69,9 +68,9 @@ class ExecutionAgent(BaseAgent):
                 SystemMessage(content=self.executor_prompt)
             ] + state["messages"]
         try:
-            response = self.llm.invoke(messages, {"configurable": {"thread_id": self.thread_id}})
+            response = self.llm.invoke(new_state["messages"], {"configurable": {"thread_id": self.thread_id}})
         except ContentPolicyViolationError as e:
-            print("Error: ", e, " ",messages[-1].content)
+            print("Error: ", e, " ",new_state["messages"][-1].content)
         return {"messages": [response], "workspace": new_state["workspace"]}
 
     # Define the function that calls the model
