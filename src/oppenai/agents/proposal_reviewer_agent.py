@@ -34,6 +34,7 @@ from pydantic import confloat
 
 import json # for prepping for LLM
 
+from typing import Callable
 
 ######################################
 # BEGIN: RICH CONSOLE STUFF
@@ -46,7 +47,7 @@ from rich.panel   import Panel
 from rich.syntax import Syntax
 from rich.text    import Text
 from rich.table import Table 
-from rich import box                         # extra box styles (rounded, double…)
+from rich import box                         # extra box styles (rounded, double)
 from rich.progress import Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
 
 theme = Theme({
@@ -111,6 +112,9 @@ class ProposalManifest(TypedDict, total=False):
     # "research_approach_reasoning": "..."
 
 class ReviewState(TypedDict, total=False):
+    # timing information, useful for thinking about how long these operations take
+    timings: Dict[str, Dict[str, float]] # {node_name: {"start": t0, "end": t1 }}
+
     ######################################################
     #  BEGIN: state information related to the CFP
     ######################################################
@@ -167,6 +171,58 @@ def to_pretty_json(obj) -> str:
     return json.dumps(obj, indent=2)
 
 
+###############################
+# BEGIN: Timing stuff
+################################
+def _mark_start(state: ReviewState, node: str) -> None:
+    state.setdefault("timings", {}).setdefault(node, {})["start"] = time.perf_counter()
+
+def _mark_end(state: ReviewState, node: str) -> None:
+    state["timings"][node]["end"] = time.perf_counter()
+
+def timed(node_name: str) -> Callable:
+    def decorator(fn: Callable) -> Callable:
+        def wrapper(self, state: ReviewState, *args, **kwargs):
+            _mark_start(state, node_name)
+            new_state = fn(self, state, *args, **kwargs)
+            _mark_end(new_state, node_name)        # use the returned state
+            return new_state
+        return wrapper
+    return decorator
+
+def _show_timings(state: ReviewState) -> ReviewState:
+    timings = state.get("timings", {})
+    if not timings:
+        print("\n[No timing data collected]\n")
+        return state
+    
+    NODE_COL_WIDTH = 50
+    SEP_LINE = "-" * (NODE_COL_WIDTH + 1 + 12 + 1 + 12)
+
+    # header
+    print("\n=== Node timing summary ===")
+    print(f"{'Node':{NODE_COL_WIDTH}} {'seconds':>12} {'minutes':>12}")
+    print(SEP_LINE)
+
+    total_sec = 0.0
+    for node, t in timings.items():
+        start = t.get("start")
+        end   = t.get("end")
+        if start is None or end is None:
+            continue                      # skip nodes with missing data
+        elapsed = end - start
+        total_sec += elapsed
+        print(f"{node:{NODE_COL_WIDTH}} {elapsed:12.3f} {elapsed/60:12.3f}")
+
+    print(SEP_LINE)
+    print(f"{'Total':{NODE_COL_WIDTH}} {total_sec:12.3f} {total_sec/60:12.3f}\n")
+    return state
+
+###############################
+# END: Timing stuff
+################################
+
+
 # === Main Agent ===
 class ProposalReviewerAgent(BaseAgent):
     def __init__(self, llm="openai/o3-mini", process_images = True, max_results: int = 3, *args, **kwargs):
@@ -175,6 +231,7 @@ class ProposalReviewerAgent(BaseAgent):
         self.process_images = process_images
         self.graph = self._build_graph()
 
+    @timed("read_proposal_call_node")
     def _read_proposal_call_node(self, state: ReviewState) -> ReviewState:
         proposal_call_pdf_filename = state["proposal_call_pdf_filename"]
         print(f"This is proposal call PDF: {proposal_call_pdf_filename}")
@@ -186,6 +243,7 @@ class ProposalReviewerAgent(BaseAgent):
 
         return {**state, "proposal_call_raw_text": full_text}
     
+    @timed("summarize_proposal_call_node")
     def _summarize_proposal_call_node(self, state: ReviewState) -> ReviewState:
         proposal_call_raw_text = state["proposal_call_raw_text"]
         # print(f"This is proposal call raw text: {proposal_call_raw_text}")
@@ -288,6 +346,7 @@ class ProposalReviewerAgent(BaseAgent):
 
         return {**state, "proposal_call_summary": summary}
 
+    @timed("collect_proposal_pdfs")
     def _collect_proposal_pdfs(self, state: ReviewState) -> ReviewState:
         pdf_dir = pathlib.Path(state["submitted_proposals_dir"])
 
@@ -419,6 +478,7 @@ class ProposalReviewerAgent(BaseAgent):
 
 
     # this is where we loop through all the proposals . . .
+    @timed("evaluate_proposals_for_CFP_conformance")
     def _evaluate_proposals_for_CFP_conformance(self, state: ReviewState) -> ReviewState:
         proposal_call_summary = state["proposal_call_summary"]
         manifests             = state["proposal_manifests"]
@@ -535,6 +595,7 @@ class ProposalReviewerAgent(BaseAgent):
 
         return eval_response
     
+    @timed("evaluate_proposals_for_TRL_determination")
     def _evaluate_proposals_for_TRL_determination(self, state: ReviewState) -> ReviewState:
         trl_levels_json_filename = state["trl_levels_json_filename"]
         manifests             = state["proposal_manifests"]
@@ -558,6 +619,7 @@ class ProposalReviewerAgent(BaseAgent):
         return {**state}
     
 
+    @timed("read_review_criteria_node")
     def _read_review_criteria_node(self, state: ReviewState) -> ReviewState:
         review_criteria_json_filename = state["review_criteria_json_filename"]
         print(f"This is review criteria JSON: {review_criteria_json_filename}")
@@ -599,7 +661,7 @@ class ProposalReviewerAgent(BaseAgent):
             )
             fields[f"{safe}_reasoning"] = (
                 str,
-                Field(..., description=f"{cat['name']} score rationale"),
+                Field(..., description=f"{cat['name']} score rationale - 2-3 paragraphs."),
             )
 
         ProposalReview = create_model("ProposalReview", **fields)  # <- dynamic class
@@ -626,6 +688,7 @@ class ProposalReviewerAgent(BaseAgent):
     def _evaluate_proposal_for_review(
         self,
         manifest: ProposalManifest,
+        proposal_call_summary: str,
         rubric: dict,
         proposal_review_parser,          # <- the parser you stored in state
     ):
@@ -653,13 +716,21 @@ class ProposalReviewerAgent(BaseAgent):
                     "system",
                     (
                         "<!-- {unique_query_id} --> "
-                        "You are a senior proposal reviewer. Use the rubric provided to score "
-                        "each category and give two-paragraph rationales. "
+                        "You are a senior proposal reviewer. Use the CFP and rubric provided to score "
+                        "each category and give 2-3 paragraph rationales.  Draw connections between "
+                        "the proposal and the CFP and leverage the rubric.  "
                         "Please be critical - harsh when necessary, but not needlessly cruel.  "
                         "Please be *specific*, we are not interested in general vague responses - "
                         "we need reviews that are actionable and critical for the authors.  "
                         "Do not simply review everything at the highest level unless it really "
-                        "warrants it.  "
+                        "warrants it.  Remember to drive your response to each category by the "
+                        "'guiding_question'.  Include verbiage related to the rating score labels "
+                        "in your review.  For instance, 'Outstanding' for 5.0, 'Fair' for 2.0, etc.  "
+                        "Remember a review needs to be CRITICAL!  Please pick apart the proposal "
+                        "findings strengths and weaknesses in each of the categories.  "
+                        "Be sure to include references to the CFP's R&D priorities!  We need to "
+                        "see connections to this-or-that priority, or it could be better aligned "
+                        "to some other priority from the CFP.  "
                         "Reply ONLY with a JSON object that matches the schema; "
                         "no markdown or extraneous text."
                     ),
@@ -667,6 +738,7 @@ class ProposalReviewerAgent(BaseAgent):
                 (
                     "human",
                     (
+                        "<<<CFP-CALL-TEXT-START>>>\n{proposal_call_summary}\n<<<CFP-CALL-TEXT-END>>>\n"
                         "<<<RUBRIC>>>\\n{rubric_json}\\n<<<END RUBRIC>>>\\n"
                         "<<<PROPOSAL>>>\\n{proposal_raw_text}\\n<<<END PROPOSAL>>>\\n\\n"
                         "{format_instructions}"
@@ -685,6 +757,7 @@ class ProposalReviewerAgent(BaseAgent):
         # -------------------------------------------------------
         rubric_json_str = json.dumps(rubric, indent=2)
 
+
         with Progress(
             SpinnerColumn(spinner_name="dots", style="cyan"),
             TextColumn("[progress.description]{task.description}"),
@@ -693,11 +766,26 @@ class ProposalReviewerAgent(BaseAgent):
             transient=True,
         ) as prog:
             task = prog.add_task(
-                f"Reviewing {manifest['filename']} …", total=None
+                f"Reviewing {manifest['filename']} . . .", total=None
             )
+            # message_list = prompt.format_messages(
+            #     unique_query_id=str(time.time()),
+            #     proposal_call_summary=proposal_call_summary,
+            #     rubric_json=rubric_json_str,
+            #     proposal_raw_text=proposal_raw_text,
+            #     format_instructions=fmt_instr,
+            # )
+
+            # print("\n--- prompt sent to LLM ------------------------------------")
+            # for m in message_list:
+            #     role = m.type                      # "system" or "human"
+            #     print(f"\n[{role.upper()}]\n{m.content}")
+            # print("------------------------------------------------------------\n")
+
             result = chain.invoke(
                 {
                     "unique_query_id": str(time.time()),
+                    "proposal_call_summary": proposal_call_summary,
                     "rubric_json": rubric_json_str,
                     "proposal_raw_text": proposal_raw_text,
                     "format_instructions": fmt_instr,
@@ -722,16 +810,19 @@ class ProposalReviewerAgent(BaseAgent):
         return result        # a ProposalReview pydantic object
 
         
+    @timed("evaluate_proposals_for_review")
     def _evaluate_proposals_for_review(self, state: ReviewState) -> ReviewState:
         manifests             = state["proposal_manifests"]
         total                 = len(manifests)
         rubric = state['rubric']
         proposal_review_parser = state['proposal_review_parser']
+        proposal_call_summary = state["proposal_call_summary"]
+
 
         for idx, manifest in enumerate(manifests, start=1):
             console.print(f"[cyan]Processing proposal {idx}/{total} for full review . . .")
             result = self._evaluate_proposal_for_review(
-                manifest, rubric, proposal_review_parser
+                manifest, proposal_call_summary, rubric, proposal_review_parser
             )
 
             manifest.update(result.model_dump()) # copies the dynamic fields in
@@ -739,6 +830,7 @@ class ProposalReviewerAgent(BaseAgent):
         return {**state}
 
 
+    @timed("aggregate_node")
     def _aggregate_node(self, state: ReviewState) -> ReviewState:
         console.print("[bold underline cyan]\n=== Proposals Analysis ===\n")
 
@@ -755,6 +847,14 @@ class ProposalReviewerAgent(BaseAgent):
             # ----------- build the inner table ----------
             grid = Table.grid(padding=(0, 1))
             grid.expand = False                           # fit to content
+
+            summary = Text(
+                m['summary'],
+                style='blue',
+                overflow='fold'
+            )
+            grid.add_row("Proposal Summary:", summary)
+
 
             # row: Topic Areas
             topics = ", ".join(m["topic_areas"]) or "—"
@@ -817,6 +917,7 @@ class ProposalReviewerAgent(BaseAgent):
         return {**state}
     
 
+    @timed("export_reviews_to_csv")
     def _export_reviews_to_csv(self, state: ReviewState) -> ReviewState:
         manifests = state["proposal_manifests"]
 
@@ -850,6 +951,11 @@ class ProposalReviewerAgent(BaseAgent):
         # keep path in state if later nodes need it
         return {**state, "reviews_csv": str(out_path)}
     
+    @timed("finish_up")
+    def _finish_up(self, state: ReviewState) -> ReviewState:
+        _show_timings(state)
+        return {**state}
+
         
     def _build_graph(self):
         builder = StateGraph(ReviewState)
@@ -872,12 +978,12 @@ class ProposalReviewerAgent(BaseAgent):
 
         builder.add_node("aggregate", self._aggregate_node)
         builder.add_node("export_to_csv", self._export_reviews_to_csv)
+        builder.add_node("finish_up", self._finish_up)
 
 
-        builder.set_entry_point("read_proposal_call")
 
         # step 1: read the proposal call PDF into raw text
-        # builder.set_entry_point("read_proposal_call")
+        builder.add_edge(START, "read_proposal_call")
         # step 2: after we have the proposal call raw text, ask the LLM to summarize it
         builder.add_edge("read_proposal_call", "summarize_proposal_call")
         # step 3: let's work on the proposals - first, we need to collect all the proposals
@@ -891,7 +997,8 @@ class ProposalReviewerAgent(BaseAgent):
         builder.add_edge("read_review_criteria", "evaluate_proposals_for_review")
         builder.add_edge("evaluate_proposals_for_review", "aggregate")
         builder.add_edge("aggregate", "export_to_csv")
-        builder.set_finish_point("export_to_csv")
+        builder.add_edge("export_to_csv", "finish_up")
+        builder.add_edge("finish_up", END)
 
 
         graph = builder.compile()
