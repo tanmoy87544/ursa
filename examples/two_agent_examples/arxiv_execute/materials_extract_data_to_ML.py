@@ -11,8 +11,15 @@ def main():
         model="openai/o3",
         max_tokens=50000,
     )
+    
+    agent = ArxivAgent(llm=model, summarize = True, process_images = False, 
+                       max_results        = 40,   
+                       database_path      ='database_materials2',
+                       summaries_path     ='database_summaries_materials2', 
+                       vectorstore_path   ='vectorstores_materials2', 
+                       download_papers    = True)
 
-    agent  = ArxivAgent(llm= model, max_results = 40)
+    
     result = agent.run(arxiv_search_query="high entropy alloy, yield strength, interstitial", 
                        context="Extract data that can be used to visualize how yield strength increase (%) depends on the interstital doping atomic percentage.")
     print(result)

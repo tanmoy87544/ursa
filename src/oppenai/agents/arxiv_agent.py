@@ -1,5 +1,5 @@
 import os
-import pymupdf 
+import pymupdf  
 import requests
 import feedparser
 from PIL import Image
@@ -11,30 +11,20 @@ from typing_extensions import TypedDict, List
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_openai import ChatOpenAI
 from langgraph.graph import StateGraph, END, START
-# from langchain_core.runnables.graph import MermaidDrawMethod
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_community.vectorstores import FAISS
+from langchain_openai import OpenAIEmbeddings
 
 from openai import OpenAI
 
 from .base import BaseAgent
 
-# --- ANSI color codes ---
-GREEN = "\033[92m"
-BLUE = "\033[94m"
-RED = "\033[91m"
-RESET = "\033[0m"
-BOLD = "\033[1m"
 
-
-# === OpenAI Vision Client ===
 client = OpenAI()
 
-# === Data Schemas ===
 class PaperMetadata(TypedDict):
     arxiv_id: str
-    title: str
-    authors: str
     full_text: str
 
 class PaperState(TypedDict, total=False):
@@ -45,7 +35,6 @@ class PaperState(TypedDict, total=False):
     final_summary: str
 
 
-# === Image Description with GPT-4V ===
 def describe_image(image: Image.Image) -> str:
     buffered = BytesIO()
     image.save(buffered, format="PNG")
@@ -97,51 +86,75 @@ def extract_and_describe_images(pdf_path: str, max_images: int = 5) -> List[str]
     return descriptions
 
 
-# === Main Agent ===
+
 class ArxivAgent(BaseAgent):
-    def __init__(self, llm="openai/o3-mini", process_images = True, max_results: int = 3, *args, **kwargs):
+    def __init__(self, llm="openai/o3-mini", summarize: bool = True, process_images = True, max_results: int = 3,
+                 database_path      ='database', 
+                 summaries_path     ='database_summaries', 
+                 vectorstore_path   ='vectorstores', 
+                 download_papers: bool = True, **kwargs):
+        
         super().__init__(llm, **kwargs)
-        self.max_results = max_results
-        self.process_images = process_images
+        self.summarize        = summarize
+        self.process_images   = process_images
+        self.max_results      = max_results
+        self.database_path    = database_path
+        self.summaries_path   = summaries_path
+        self.vectorstore_path = vectorstore_path
+        self.download_papers  = download_papers
+        
         self.graph = self._build_graph()
 
+        os.makedirs(self.database_path, exist_ok=True)
+
+        os.makedirs(self.summaries_path, exist_ok=True)
+
+        os.makedirs(self.vectorstore_path, exist_ok=True)
+
+        
     def _fetch_papers(self, query: str) -> List[PaperMetadata]:
-        print(f"{BOLD}{BLUE}ArXiv Agent beginning workflow{RESET}")
-        encoded_query = quote(query)
-        url = f"http://export.arxiv.org/api/query?search_query=all:{encoded_query}&start=0&max_results={self.max_results}"
-        feed = feedparser.parse(url)
+    
+        if self.download_papers:
+            
+            encoded_query = quote(query)
+            url = f"http://export.arxiv.org/api/query?search_query=all:{encoded_query}&start=0&max_results={self.max_results}"
+            feed = feedparser.parse(url)
+    
+            for i,entry in enumerate(feed.entries):
+                full_id = entry.id.split('/abs/')[-1]
+                arxiv_id = full_id.split('/')[-1]
+                title = entry.title.strip()
+                authors = ", ".join(author.name for author in entry.authors)
+                pdf_url = f"https://arxiv.org/pdf/{full_id}.pdf"
+                pdf_filename = os.path.join(self.database_path, f"{arxiv_id}.pdf")
+    
+                if os.path.exists(pdf_filename):
+                    print(f"Paper # {i+1}, Title: {title}, already exists in database")
+                else:
+                    print(f"Downloading paper # {i+1}, Title: {title}")
+                    response = requests.get(pdf_url)
+                    with open(pdf_filename, 'wb') as f:
+                        f.write(response.content)
+                        
 
         papers = []
-        for entry in feed.entries:
-            arxiv_id = entry.id.split('/abs/')[-1]
-            title = entry.title.strip()
-            authors = ", ".join(author.name for author in entry.authors)
-            pdf_url = f"https://arxiv.org/pdf/{arxiv_id}.pdf"
-            pdf_filename = f"{arxiv_id}.pdf"
-
-            try:
-                response = requests.get(pdf_url)
-                with open(pdf_filename, 'wb') as f:
-                    f.write(response.content)
-
-                loader = PyPDFLoader(pdf_filename)
-                pages = loader.load()
-                full_text = "\n".join([p.page_content for p in pages])
-
-                if self.process_images:
-                    image_descriptions = extract_and_describe_images(pdf_filename)
-                    full_text += "\n\n[Image Interpretations]\n" + "\n".join(image_descriptions)
-
-            except Exception as e:
-                full_text = f"Error fetching paper: {e}"
-            finally:
-                if os.path.exists(pdf_filename):
-                    os.remove(pdf_filename)
-
+        for i,pdf_filename in enumerate(os.listdir(self.database_path)):
+            full_text = ""
+            if self.summarize:
+                try:
+                    loader = PyPDFLoader( os.path.join(self.database_path, pdf_filename) )
+                    pages = loader.load()
+                    full_text = "\n".join([p.page_content for p in pages])
+        
+                    if self.process_images:
+                        image_descriptions = extract_and_describe_images( os.path.join(self.database_path, pdf_filename) )
+                        full_text += "\n\n[Image Interpretations]\n" + "\n".join(image_descriptions)
+                        
+                except Exception as e:
+                    full_text = f"Error loading paper: {e}"
+    
             papers.append({
-                "arxiv_id": arxiv_id,
-                "title": title,
-                "authors": authors,
+                "arxiv_id": pdf_filename.split('.pdf')[0],
                 "full_text": full_text,
             })
 
@@ -151,85 +164,135 @@ class ArxivAgent(BaseAgent):
         papers = self._fetch_papers(state["query"])
         return {**state, "papers": papers}
 
-    def _summarize_node(self, state: PaperState) -> PaperState:
-        summaries = []
-        if self.process_images:
-            prompt = ChatPromptTemplate.from_template("""
-            You are a scientific assistant helping summarize research papers.
-            
-            The paper below consists of:
-            - Main written content (from the body of the PDF)
-            - Descriptions of images and plots extracted via visual analysis (clearly marked at the end)
-            
-            Your task is to summarize the paper in the following context: {context}
-            
-            in two separate sections:
-            
-            1. **Text-Based Insights**: Summarize the main contributions and findings from the written text.
-            2. **Image-Based Insights**: Describe what the extracted image/plot interpretations add or illustrate. If the image data supports or contradicts the text, mention that.
-            
-            Here is the paper content:
-            
-            {paper}
-            """)
+    
+    def _get_or_build_vectorstore(self, paper_text: str, arxiv_id: str):
+        save_loc =  self.vectorstore_path + '/' + arxiv_id
+        embeddings = OpenAIEmbeddings()
+    
+        if os.path.exists(os.path.join(save_loc, "index.faiss")):
+            print(f"Loading cached vectorstore for {arxiv_id}")
+            vectorstore = FAISS.load_local(save_loc, embeddings,allow_dangerous_deserialization=True)
         else:
-            prompt = ChatPromptTemplate.from_template("""
-            You are a scientific assistant helping summarize research papers.
+            print(f"Building new vectorstore for {arxiv_id}")
+            splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+            docs = splitter.create_documents([paper_text])
+            vectorstore = FAISS.from_documents(docs, embeddings)
+            vectorstore.save_local(save_loc)
+    
+        return vectorstore.as_retriever(search_kwargs={"k": 5})
             
-            The paper below consists of the main written content (from the body of the PDF)
-            
-            Your task is to summarize the paper in the following context: {context}
-            
-            Here is the paper content:
-            
-            {paper}
-            """)
+
+    def _summarize_node(self, state: PaperState) -> PaperState:
+        
+        summaries = []
+        
+        prompt = ChatPromptTemplate.from_template("""
+        You are a scientific assistant responsible for summarizing extracts from research papers, in the context of the following task: {context}
+    
+        Summarize the retrieved scientific content below.
+    
+        {retrieved_content}
+        """)
+        
         chain = prompt | self.llm | StrOutputParser()
     
         for paper in state["papers"]:
-            print(f"{BOLD}Summarizing paper: {RED}: {paper['arxiv_id']} - {paper['title']} {RESET}" )
-            summary = chain.invoke({"paper": paper["full_text"], "context":state["context"]}, {"configurable": {"thread_id": self.thread_id}})
-            summaries.append(summary)
+            arxiv_id = paper["arxiv_id"]
+            summary_filename = os.path.join(self.summaries_path, f"{arxiv_id}_summary.txt")
+            
+            if os.path.exists(summary_filename):
+                with open(summary_filename, 'r') as f:
+                    summaries.append(f.read())
+
+            else:
+                try:
+                    retriever = self._get_or_build_vectorstore(paper["full_text"], arxiv_id)
+                    relevant_docs = retriever.invoke(state["context"])
+                    retrieved_content = "\n\n".join([doc.page_content for doc in relevant_docs])
+                    summary = chain.invoke({"retrieved_content": retrieved_content, "context": state["context"]})
+                    
+                except Exception as e:
+                    summary = f"Error summarizing paper: {e}"
+                    
+                summaries.append(summary)
+                
+                with open(summary_filename, "w") as f:
+                    f.write(summary)
     
         return {**state, "summaries": summaries}
 
+
+    
     def _aggregate_node(self, state: PaperState) -> PaperState:
         summaries = state["summaries"]
         papers = state["papers"]
         formatted = []
 
         for i, (paper, summary) in enumerate(zip(papers, summaries)):
-            citation = f"[{i+1}] {paper['title']} by {paper['authors']}\nLink: https://arxiv.org/abs/{paper['arxiv_id']}"
+            citation = f"[{i+1}] Arxiv ID: {paper['arxiv_id']}"
             formatted.append(f"{citation}\n\nSummary:\n{summary}")
 
         combined = "\n\n" + ("\n\n" + "-" * 40 + "\n\n").join(formatted)
-        return {**state, "final_summary": combined}
 
+        with open('summaries_combined.txt', "w") as f:
+            f.write(combined)
+
+        prompt = ChatPromptTemplate.from_template("""
+            You are a scientific assistant helping extract insights from summaries of research papers.
+            
+            Here are the summaries of a large number of extracts from scientific papers:
+
+            {Summaries}
+            
+            Your task is to read all the summaries and provide a response to this task: {context}
+            """)
+
+        chain = prompt | self.llm | StrOutputParser()
+
+        final_summary = chain.invoke({"Summaries": combined, "context":state["context"]})
+
+        with open('final_summary.txt', "w") as f:
+            f.write(final_summary)
+
+        return {**state, "final_summary": final_summary}
+
+
+    
     def _build_graph(self):
         builder = StateGraph(PaperState)
         builder.add_node("fetch_papers", self._fetch_node)
-        builder.add_node("summarize_each", self._summarize_node)
-        builder.add_node("aggregate", self._aggregate_node)
 
-        builder.set_entry_point("fetch_papers")
-        builder.add_edge("fetch_papers", "summarize_each")
-        builder.add_edge("summarize_each", "aggregate")
-        builder.set_finish_point("aggregate")
-        
-        graph = builder.compile(checkpointer=self.checkpointer)
-        # graph.get_graph().draw_mermaid_png(output_file_path="arxiv_agent_graph.png", draw_method=MermaidDrawMethod.PYPPETEER)
+        if self.summarize:
+            builder.add_node("summarize_each", self._summarize_node)
+            builder.add_node("aggregate", self._aggregate_node)
+
+            builder.set_entry_point("fetch_papers")
+            builder.add_edge("fetch_papers", "summarize_each")
+            builder.add_edge("summarize_each", "aggregate")
+            builder.set_finish_point("aggregate")
+
+        else:
+            builder.set_entry_point("fetch_papers")
+            builder.set_finish_point("fetch_papers")
+            
+        graph = builder.compile()
         return graph
 
-    def run(self, arxiv_search_query: str, context: str, recursion_limit=100) -> str:
-        result = self.graph.invoke({"query": arxiv_search_query, "context":context}, {"recursion_limit":recursion_limit, "configurable": {"thread_id": self.thread_id}})
-        return result.get("final_summary", "No summary generated.")
+    def run(self, arxiv_search_query: str, context: str) -> str:
+        result = self.graph.invoke({"query": arxiv_search_query, "context":context})
 
-
+        if self.summarize:
+            return result.get("final_summary", "No summary generated.")
+        else:
+            return "\n\nFinished Fetching papers!"
+    
+    
 
 if __name__ == "__main__":
     agent = ArxivAgent()
     result = agent.run(arxiv_search_query="Experimental Constraints on neutron star radius", 
                        context="What are the constraints on the neutron star radius and what uncertainties are there on the constraints?")
+    
     print(result)
 
 
