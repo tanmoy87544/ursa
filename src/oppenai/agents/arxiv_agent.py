@@ -1,7 +1,3 @@
-'''
-TO-DO: Update the prompt in _summarize_node if self.process_images=True
-'''
-
 import os
 import pymupdf  
 import requests
@@ -92,13 +88,13 @@ def extract_and_describe_images(pdf_path: str, max_images: int = 5) -> List[str]
 
 
 class ArxivAgent(BaseAgent):
-    def __init__(self, llm="OpenAI/o3-mini", summarize: bool = True, process_images = True, max_results: int = 3,
+    def __init__(self, llm="openai/o3-mini", summarize: bool = True, process_images = True, max_results: int = 3,
                  database_path      ='database', 
                  summaries_path     ='database_summaries', 
                  vectorstore_path   ='vectorstores', 
-                 download_papers: bool = True, *args, **kwargs):
+                 download_papers: bool = True, **kwargs):
         
-        super().__init__(llm, args, kwargs)
+        super().__init__(llm, **kwargs)
         self.summarize        = summarize
         self.process_images   = process_images
         self.max_results      = max_results
@@ -114,6 +110,7 @@ class ArxivAgent(BaseAgent):
         os.makedirs(self.summaries_path, exist_ok=True)
 
         os.makedirs(self.vectorstore_path, exist_ok=True)
+
         
     def _fetch_papers(self, query: str) -> List[PaperMetadata]:
     
@@ -150,7 +147,7 @@ class ArxivAgent(BaseAgent):
                     full_text = "\n".join([p.page_content for p in pages])
         
                     if self.process_images:
-                        image_descriptions = extract_and_describe_images(pdf_filename)
+                        image_descriptions = extract_and_describe_images( os.path.join(self.database_path, pdf_filename) )
                         full_text += "\n\n[Image Interpretations]\n" + "\n".join(image_descriptions)
                         
                 except Exception as e:
@@ -189,34 +186,14 @@ class ArxivAgent(BaseAgent):
         
         summaries = []
         
-        if self.process_images:
-            prompt = ChatPromptTemplate.from_template("""
-            You are a scientific assistant helping summarize research papers.
-            
-            The paper below consists of:
-            - Main written content (from the body of the PDF)
-            - Descriptions of images and plots extracted via visual analysis (clearly marked at the end)
-            
-            Your task is to summarize the paper in the following context: {context}
-            
-            in two separate sections:
-            
-            1. **Text-Based Insights**: Summarize the main contributions and findings from the written text.
-            2. **Image-Based Insights**: Describe what the extracted image/plot interpretations add or illustrate. If the image data supports or contradicts the text, mention that.
-            
-            Here is the paper content:
-            
-            {paper}
-            """)
-        else:
-            prompt = ChatPromptTemplate.from_template("""
-            You are a scientific assistant responsible for summarizing extracts from research papers, in the context of the following task: {context}
+        prompt = ChatPromptTemplate.from_template("""
+        You are a scientific assistant responsible for summarizing extracts from research papers, in the context of the following task: {context}
+    
+        Summarize the retrieved scientific content below.
+    
+        {retrieved_content}
+        """)
         
-            Summarize the retrieved scientific content below.
-        
-            {retrieved_content}
-            """)
-            
         chain = prompt | self.llm | StrOutputParser()
     
         for paper in state["papers"]:
@@ -315,6 +292,7 @@ if __name__ == "__main__":
     agent = ArxivAgent()
     result = agent.run(arxiv_search_query="Experimental Constraints on neutron star radius", 
                        context="What are the constraints on the neutron star radius and what uncertainties are there on the constraints?")
+    
     print(result)
 
 
