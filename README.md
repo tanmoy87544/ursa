@@ -1,11 +1,20 @@
 # OppenAI - The LANL Scientific Agent
 
-![OppenAI Logo](./logos/logo.png){width=200px}
+<img src="./logos/logo.png" alt="OppenAI Logo" width="200" height="200">
 
-Testing a centralized package for an agentic workflow. This should not be the final name, but I am pushing up this code that works. 
+The flexible agentic workflow for accelerating scientific tasks. 
+Composes information flow between agents for planning, code writing and execution, and online research to solve complex problems.
 
-requirements.txt is the file that results from pip freeze on the environment I have working at the moment. 
-It may have a few extra packages from testing and examples, but it should provide a working environment.
+## Installation
+With pip:
+```console
+pip install git+ssh://git@gitlab.lanl.gov/science-fair/lanl_scientific_agent.git
+```
+
+With uv:
+```console
+uv add git+ssh://git@gitlab.lanl.gov/science-fair/lanl_scientific_agent.git
+```
 
 ## How to use this code
 Better documentation will be incoming, but for now there are examples in the examples folder that should give

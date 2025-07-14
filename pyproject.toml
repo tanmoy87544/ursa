@@ -1,0 +1,53 @@
+[project]
+name = "oppenai"
+version = "0.1.0"
+description = "Agents for science at LANL"
+readme = "README.md"
+authors = [
+    { name = "Mike Grosskopf", email = "mikegros@lanl.gov" },
+    { name = "Rahul Somasundaram", email = "rsomasundaram@lanl.gov" },
+    { name = "Arthur Lui", email = "alui@lanl.gov" }
+]
+requires-python = ">=3.10"
+dependencies = [
+    "arxiv>=2.2.0,<3.0",
+    "beautifulsoup4>=4.13.4,<5.0",
+    "coolname>=2.2.0,<3.0",
+    "duckduckgo-search>=8.0.1,<9.0",
+    "langchain>=0.3.22,<0.4",
+    "langchain-community>=0.3.20,<0.4",
+    "langchain-openai>=0.3.12,<0.4",
+    "langgraph>=0.3.25,<0.4",
+    "litellm>=1.68.0,<2.0",
+    "pandas>=2.2.3,<3.0",
+    "pillow>=11.2.1",
+    "pymupdf>=1.26.0,<2.0",
+    "pypdf>=5.4.0,<6.0",
+    "rich>=13.7.0,<14.0",
+]
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.ruff]
+line-length = 80
+
+[tool.ruff.lint]
+ignore = ["D100"]
+extend-select = ["I", "W505"] # "D"
+extend-unsafe-fixes = ["F401"]
+pydocstyle.convention = "numpy"
+pycodestyle.max-doc-length = 80
+
+# Ignore test file documentation linting.
+[tool.ruff.lint.extend-per-file-ignores]
+"tests/**/*.py" = ["D"]
+
+[dependency-groups]
+dev = [
+    "coolname>=2.2.0",
+    "notebook>=7.3.3",
+    "pypdf>=5.4.0",
+    "scikit-optimize>=0.10.2",
+]

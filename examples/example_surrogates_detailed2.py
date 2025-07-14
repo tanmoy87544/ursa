@@ -1,16 +1,15 @@
+from langchain_community.chat_models import ChatLiteLLM
+from langchain_core.messages import HumanMessage
 
-import sys
-sys.path.append("../../.")
+from oppenai.agents import (
+    ExecutionAgent,
+    PlanningAgent,
+)
+from oppenai.prompt_library.planning_prompts import (
+    detailed_planner_prompt,
+)
 
-from lanl_scientific_agent.agents import ExecutionAgent, PlanningAgent, HypothesizerAgent, ResearchAgent
-from lanl_scientific_agent.agents import HypothesizerState
-from langchain_core.messages      import HumanMessage
-from langchain_openai             import ChatOpenAI
-from langchain_ollama.chat_models import ChatOllama
-
-from lanl_scientific_agent.prompt_library.planning_prompts import detailed_planner_prompt
-
-problem_definition = f'''
+problem_definition = """
 Look for a file called finished_cases.csv in your workspace. If you find it, it should contain a column named something like "log Yield".
 
 Write and execute a python file to:
@@ -22,44 +21,41 @@ Write and execute a python file to:
       - Make sure that the number of training iterations are sufficient to converge
   - Assess the quality of fits by r-squared on the test set and summarize the quality of the Gaussian process against the neural network.
   - Assess the uncertainty quantification of the two models by coverage on the test set and with visualization.
-'''
+"""
+
 
 def main():
     """Run a simple example of the scientific agent."""
     try:
-        model = ChatOpenAI(
-            model       = "o3-mini",
-            max_tokens  = 20000,
-            timeout     = None,
-            max_retries = 2)
-        # model = ChatOllama(
-        #     model       = "llama3.1:8b",
-        #     max_tokens  = 4000,
-        #     timeout     = None,
-        #     max_retries = 2
-        # )
-        
-        print(f"\nSolving problem: {problem_definition}\n")
-        
-        # Initialize the agent
-        planner      = PlanningAgent(llm      = model)
-        executor     = ExecutionAgent(llm     = model)
+        model = ChatLiteLLM(
+            model="openai/o3-mini",
+            max_tokens=20000,
+            max_retries=2,
+        )
 
-        inputs          = {"messages": [HumanMessage(content=problem_definition)]}
+        print(f"\nSolving problem: {problem_definition}\n")
+
+        # Initialize the agent
+        planner = PlanningAgent(llm=model)
+        executor = ExecutionAgent(llm=model)
+
+        inputs = {"messages": [HumanMessage(content=problem_definition)]}
 
         # Solve the problem
-        planning_output = planner.action.invoke(inputs, {"recursion_limit": 999999})
+        planning_output = planner.action.invoke(
+            inputs, {"recursion_limit": 999999}
+        )
         print(planning_output["messages"][-1].content)
-        last_step_string   = "Beginning to break down step 1 of the plan. "
+        last_step_string = "Beginning to break down step 1 of the plan. "
         detail_plan_string = "Flesh out the details of this step and generate substeps to handle the details."
         for x in planning_output["plan_steps"]:
-            print(80*"#")
-            print(80*"#")
+            print(80 * "#")
+            print(80 * "#")
             print(str(x))
-            print(80*"#")
-            print(80*"#")
-            detail_planner                = PlanningAgent(llm = model)
-            plan_string                   = str(x)
+            print(80 * "#")
+            print(80 * "#")
+            detail_planner = PlanningAgent(llm=model)
+            plan_string = str(x)
             detail_planner.planner_prompt = detailed_planner_prompt
             step_prompt = f"""
                 You are contributing to a larger solution aimed at {problem_definition}.
@@ -68,15 +64,18 @@ def main():
 
                 {detail_plan_string}
             """
-            detail_output    = detail_planner.action.invoke({"messages": [HumanMessage(content=step_prompt)]},{"recursion_limit": 999999})
-            last_substep_string   = "Beginning to break down of the plan. "
+            detail_output = detail_planner.action.invoke(
+                {"messages": [HumanMessage(content=step_prompt)]},
+                {"recursion_limit": 999999},
+            )
+            last_substep_string = "Beginning to break down of the plan. "
             for y in detail_output["plan_steps"]:
-                print(80*"$")
-                print(80*"$")
+                print(80 * "$")
+                print(80 * "$")
                 print(str(y))
-                print(80*"$")
-                print(80*"$")
-                execute_string      = "Execute this step and report results for the executor of the next step. Do not use placeholders but fully carry out each step."
+                print(80 * "$")
+                print(80 * "$")
+                execute_string = "Execute this step and report results for the executor of the next step. Do not use placeholders but fully carry out each step."
                 substep_prompt = f"""
                     You are contributing to a larger solution aimed at {problem_definition}.
                     If there are previous steps, the summary of the most recent step is: {last_substep_string}.
@@ -84,25 +83,32 @@ def main():
 
                     {execute_string}
                 """
-                final_results       = executor.action.invoke({"messages": [HumanMessage(content=substep_prompt)], "workspace":"workspace_surrogate_detailed2"},{"recursion_limit": 999999})
+                final_results = executor.action.invoke(
+                    {
+                        "messages": [HumanMessage(content=substep_prompt)],
+                        "workspace": "workspace_surrogate_detailed2",
+                    },
+                    {"recursion_limit": 999999},
+                )
                 last_substep_string = final_results["messages"][-1].content
                 print(last_substep_string)
             last_step_string = last_substep_string
-                
+
         return final_results["messages"][-1].content
-    
+
     except Exception as e:
         print(f"Error in example: {str(e)}")
         import traceback
+
         traceback.print_exc()
         return {"error": str(e)}
+
 
 if __name__ == "__main__":
     main()
 
 
-
-# Solving problem: 
+# Solving problem:
 # Look for a file called finished_cases.csv in your workspace. If you find it, it should contain a column named something like "log Yield".
 
 # Write and execute a python file to:
@@ -246,7 +252,7 @@ if __name__ == "__main__":
 # RUNNING:  python step1_sub1_import_libraries.py
 # STDOUT:  Libraries imported successfully: pandas, os, sys
 
-# STDERR:  
+# STDERR:
 # We executed the first step by writing and running a Python file (step1_sub1_import_libraries.py) that imported the essential libraries: pandas, os, and sys. The script printed a confirmation message ("Libraries imported successfully: pandas, os, sys") indicating that the libraries were imported correctly, and the output validated their availability for subsequent operations. Let me know when you're ready to proceed to the next step.
 # $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 # $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
@@ -259,7 +265,7 @@ if __name__ == "__main__":
 # RUNNING:  python step1_sub2_check_file.py
 # STDOUT:  File finished_cases.csv exists: True
 
-# STDERR:  
+# STDERR:
 # The file check script was executed successfully, confirming that finished_cases.csv exists in the workspace (output: True). The next step is ready to be executed.
 # $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 # $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
@@ -272,7 +278,7 @@ if __name__ == "__main__":
 # RUNNING:  python handle_missing_file.py
 # STDOUT:  'finished_cases.csv' found. Proceeding with further computations...
 
-# STDERR:  
+# STDERR:
 # The missing file check was successfully executed. The script confirmed that "finished_cases.csv" exists in the workspace and proceeded without printing an error or exiting. The current step's objective was met, and you may now proceed to the next step in the pipeline.
 # $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 # $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
@@ -303,7 +309,7 @@ if __name__ == "__main__":
 # 3  12.838933  0.077483     0.291670  0.995889  0.649397  0.055405
 # 4  13.307522  0.222572     0.772324  0.000000  0.000000  0.310098
 
-# STDERR:  
+# STDERR:
 # The verification step executed successfully. The CSV file "finished_cases.csv" was loaded, showing 484 records and 6 columns: ['logYield', 'DT', 'Inner Shell', 'Tamper', 'Foam', 'Ablator']. Although the target column was expected to be labeled with "log Yield", the file contains "logYield," which is acceptable. The first few rows confirm that the DataFrame is populated with valid records. This satisfies the criteria for proceeding to the next step.
 # $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 # $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
@@ -326,7 +332,7 @@ if __name__ == "__main__":
 # ['logYield', 'DT', 'Inner Shell', 'Tamper', 'Foam', 'Ablator']
 # Found target column: logYield
 
-# STDERR:  
+# STDERR:
 # The preview of the DataFrame was printed successfully, confirming the expected columns are present, including the target "logYield" column. The first few rows were displayed correctly, and the column names were validated. This step confirms the data is ready for subsequent model fitting.
 # ################################################################################
 # ################################################################################
@@ -346,7 +352,7 @@ if __name__ == "__main__":
 # DataFrame shape: (484, 6)
 
 # STDERR:  Traceback (most recent call last):
-#   File "/Users/mikegros/Projects/AIDI/lanl_scientific_agent/examples/workspace/step2_data_preprocessing.py", line 20, in <module>
+#   File "/Users/mikegros/Projects/AIDI/oppenai/examples/workspace/step2_data_preprocessing.py", line 20, in <module>
 #     raise ValueError(f"Target column '{target_col}' not found in data columns: {df.columns.tolist()}")
 # ValueError: Target column 'log Yield' not found in data columns: ['logYield', 'DT', 'Inner Shell', 'Tamper', 'Foam', 'Ablator']
 # Writing filename  step2_data_preprocessing.py
@@ -382,7 +388,7 @@ if __name__ == "__main__":
 
 # Data preprocessing and train/test split completed successfully.
 
-# STDERR:  
+# STDERR:
 # The file finished_cases.csv was successfully loaded (484 rows, 6 columns), and the target variable was identified as "logYield" (instead of "log Yield"). The features („DT“, „Inner Shell“, „Tamper“, „Foam“, „Ablator“) were separated from the target; missing values were checked (none found). The data was scaled using StandardScaler and split reproducibly with a random state of 42 into training (387 samples) and test sets (97 samples). This completes the preprocessing step.
 # ################################################################################
 # ################################################################################
@@ -462,7 +468,7 @@ if __name__ == "__main__":
 # Iteration 300 - Loss: 2.1788
 # Training completed successfully.
 
-# STDERR:  
+# STDERR:
 # The GP training script executed as expected. During each of the 300 iterations, the script:
 # • Zeroed the gradients to prevent accumulation.
 # • Performed a forward pass through the model.
@@ -494,9 +500,9 @@ if __name__ == "__main__":
 # Written code to file: ./workspace/prepare_numpyro_input.py
 # [PASSED] the safety check: python prepare_numpyro_input.py
 # RUNNING:  python prepare_numpyro_input.py
-# STDOUT:  
+# STDOUT:
 # STDERR:  Traceback (most recent call last):
-#   File "/Users/mikegros/Projects/AIDI/lanl_scientific_agent/examples/workspace/prepare_numpyro_input.py", line 14, in <module>
+#   File "/Users/mikegros/Projects/AIDI/oppenai/examples/workspace/prepare_numpyro_input.py", line 14, in <module>
 #     raise ValueError("No column containing 'log Yield' was found in the CSV file.")
 # ValueError: No column containing 'log Yield' was found in the CSV file.
 
@@ -507,7 +513,7 @@ if __name__ == "__main__":
 # STDOUT:  Available columns: ['logYield', 'DT', 'Inner Shell', 'Tamper', 'Foam', 'Ablator']
 
 # STDERR:  Traceback (most recent call last):
-#   File "/Users/mikegros/Projects/AIDI/lanl_scientific_agent/examples/workspace/prepare_numpyro_input.py", line 17, in <module>
+#   File "/Users/mikegros/Projects/AIDI/oppenai/examples/workspace/prepare_numpyro_input.py", line 17, in <module>
 #     raise ValueError("No column containing 'log Yield' was found in the CSV file. Available columns: {}".format(df.columns.tolist()))
 # ValueError: No column containing 'log Yield' was found in the CSV file. Available columns: ['logYield', 'DT', 'Inner Shell', 'Tamper', 'Foam', 'Ablator']
 
@@ -528,7 +534,7 @@ if __name__ == "__main__":
 # First 5 entries of y_train_jax:
 #  [10.67434    5.        13.2765665 15.917813   5.       ]
 
-# STDERR:  
+# STDERR:
 # The input CSV was loaded and its columns listed. The target column "logYield" was successfully identified. The code then split the data into features and targets, split the dataset into training and test sets, and converted the training data into JAX-friendly arrays; their shapes and data types were logged, and the first few entries printed. This completes the preparation of the input data for numpyro as required for the step.
 # $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 # $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
@@ -555,7 +561,7 @@ if __name__ == "__main__":
 # The solution for step4.3 involves choosing SVI as the inference algorithm for the Bayesian Neural Network model. In the implementation:
 # • An AutoNormal guide is used for a mean-field variational approximation.
 # • The Adam optimizer is set up with a learning rate of 0.01.
-# • The training runs for 5000 iterations to ensure ELBO convergence. 
+# • The training runs for 5000 iterations to ensure ELBO convergence.
 
 # This choice was made given the moderate size of the dataset and computational budget, providing an efficient and effective alternative to NUTS. The complete implementation in step4_3_select_inference.py confirms these settings and logs the inferred parameter keys after convergence.
 # $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
@@ -570,7 +576,7 @@ if __name__ == "__main__":
 # STDOUT:  Loading data from finished_cases.csv...
 
 # STDERR:  Traceback (most recent call last):
-#   File "/Users/mikegros/Projects/AIDI/lanl_scientific_agent/examples/workspace/step4_4_execute_inference.py", line 45, in <module>
+#   File "/Users/mikegros/Projects/AIDI/oppenai/examples/workspace/step4_4_execute_inference.py", line 45, in <module>
 #     raise ValueError("No column resembling 'log Yield' found in the dataset.")
 # ValueError: No column resembling 'log Yield' found in the dataset.
 
@@ -578,8 +584,8 @@ if __name__ == "__main__":
 # Written code to file: ./workspace/step4_4_execute_inference.py
 # [PASSED] the safety check: python step4_4_execute_inference.py
 # RUNNING:  python step4_4_execute_inference.py
-# STDOUT:  
-# STDERR:    File "/Users/mikegros/Projects/AIDI/lanl_scientific_agent/examples/workspace/step4_4_execute_inference.py", line 166
+# STDOUT:
+# STDERR:    File "/Users/mikegros/Projects/AIDI/oppenai/examples/workspace/step4_4_execute_inference.py", line 166
 #     y_train_jax = jnp.array(y_train)
 # IndentationError: unexpected indent
 # Writing filename  step4_4_execute_inference.py
@@ -604,7 +610,7 @@ if __name__ == "__main__":
 # Training Bayesian Neural Network with SVI...
 # SVI training completed in 3.62 seconds.
 
-# STDERR:  
+# STDERR:
 #   0%|          | 0/5000 [00:00<?, ?it/s]
 #   0%|          | 1/5000 [00:00<1:06:19,  1.26it/s]
 #  15%|█▌        | 773/5000 [00:00<00:03, 1175.54it/s, init loss: 2542.0139, avg. loss [501-750]: 956.1013]
@@ -615,7 +621,7 @@ if __name__ == "__main__":
 #  97%|█████████▋| 4840/5000 [00:01<00:00, 6197.78it/s, init loss: 2542.0139, avg. loss [4501-4750]: 920.3157]
 # 100%|██████████| 5000/5000 [00:01<00:00, 3532.44it/s, init loss: 2542.0139, avg. loss [4751-5000]: 918.6783]
 # Traceback (most recent call last):
-#   File "/Users/mikegros/Projects/AIDI/lanl_scientific_agent/examples/workspace/step4_4_execute_inference.py", line 187, in <module>
+#   File "/Users/mikegros/Projects/AIDI/oppenai/examples/workspace/step4_4_execute_inference.py", line 187, in <module>
 #     final_loss = svi_result.loss
 # AttributeError: 'SVIRunResult' object has no attribute 'loss'
 # Writing filename  step4_4_execute_inference.py
@@ -640,9 +646,9 @@ if __name__ == "__main__":
 # Written code to file: ./workspace/step4_5_extract_evaluate_posterior.py
 # [PASSED] the safety check: python step4_5_extract_evaluate_posterior.py
 # RUNNING:  python step4_5_extract_evaluate_posterior.py
-# STDOUT:  
+# STDOUT:
 # STDERR:  Traceback (most recent call last):
-#   File "/Users/mikegros/Projects/AIDI/lanl_scientific_agent/examples/workspace/step4_5_extract_evaluate_posterior.py", line 14, in <module>
+#   File "/Users/mikegros/Projects/AIDI/oppenai/examples/workspace/step4_5_extract_evaluate_posterior.py", line 14, in <module>
 #     from numpyro import constraints
 # ImportError: cannot import name 'constraints' from 'numpyro' (/Users/mikegros/envs/agentic/lib/python3.9/site-packages/numpyro/__init__.py)
 
@@ -655,7 +661,7 @@ if __name__ == "__main__":
 # Data split: 387 training samples, 97 test samples
 # Training Bayesian Neural Network with SVI for 5000 iterations...
 
-# STDERR:  
+# STDERR:
 #   0%|          | 0/5000 [00:00<?, ?it/s]
 #   0%|          | 0/5000 [00:00<?, ?it/s]
 # jax.errors.SimplifiedTraceback: For simplicity, JAX has removed its internal frames from the traceback of the following exception. Set JAX_TRACEBACK_FILTERING=off to include these.
@@ -663,7 +669,7 @@ if __name__ == "__main__":
 # The above exception was the direct cause of the following exception:
 
 # Traceback (most recent call last):
-#   File "/Users/mikegros/Projects/AIDI/lanl_scientific_agent/examples/workspace/step4_5_extract_evaluate_posterior.py", line 114, in <module>
+#   File "/Users/mikegros/Projects/AIDI/oppenai/examples/workspace/step4_5_extract_evaluate_posterior.py", line 114, in <module>
 #     svi_result = svi.run(rng_key, n_iterations, X_train, y_train)
 #   File "/Users/mikegros/envs/agentic/lib/python3.9/site-packages/numpyro/infer/svi.py", line 409, in run
 #     svi_state, loss = jit(body_fn)(svi_state, None)
@@ -703,7 +709,7 @@ if __name__ == "__main__":
 # Prediction uncertainty plot saved to bnn_uncertainty.png
 # Step 4.5 completed: Posterior samples extracted and convergence diagnostics evaluated.
 
-# STDERR:  
+# STDERR:
 #   0%|          | 0/5000 [00:00<?, ?it/s]
 #   0%|          | 1/5000 [00:00<1:08:55,  1.21it/s]
 #   9%|▉         | 441/5000 [00:00<00:07, 648.81it/s, init loss: 334595.4062, avg. loss [1-250]: 138490188837.0592]
@@ -711,9 +717,9 @@ if __name__ == "__main__":
 #  33%|███▎      | 1632/5000 [00:01<00:01, 2444.70it/s, init loss: 334595.4062, avg. loss [1251-1500]: 10299665.2320]
 #  45%|████▍     | 2229/5000 [00:01<00:00, 3223.97it/s, init loss: 334595.4062, avg. loss [1751-2000]: 144526584.1078]
 #  57%|█████▋    | 2826/5000 [00:01<00:00, 3882.68it/s, init loss: 334595.4062, avg. loss [2501-2750]: 1900842765.2019]
-#  68%|██████▊   | 3401/5000 [00:01<00:00, 4359.40it/s, init loss: 334595.4062, avg. loss [3001-3250]: 3545169.0495]   
+#  68%|██████▊   | 3401/5000 [00:01<00:00, 4359.40it/s, init loss: 334595.4062, avg. loss [3001-3250]: 3545169.0495]
 #  80%|████████  | 4002/5000 [00:01<00:00, 4798.48it/s, init loss: 334595.4062, avg. loss [3751-4000]: 15728653.6781]
-#  92%|█████████▏| 4603/5000 [00:01<00:00, 5131.60it/s, init loss: 334595.4062, avg. loss [4251-4500]: 4471819.0825] 
+#  92%|█████████▏| 4603/5000 [00:01<00:00, 5131.60it/s, init loss: 334595.4062, avg. loss [4251-4500]: 4471819.0825]
 # 100%|██████████| 5000/5000 [00:01<00:00, 2952.90it/s, init loss: 334595.4062, avg. loss [4751-5000]: 3868053.1200]
 
 # The latest step successfully extracted the posterior samples from the Bayesian neural network model and evaluated convergence diagnostics. Specifically:
@@ -737,7 +743,7 @@ if __name__ == "__main__":
 # Trace plots saved to trace_plots.png
 # File bnn_elbo_history.pkl not found. Skipping ELBO convergence plot.
 
-# STDERR:  /Users/mikegros/Projects/AIDI/lanl_scientific_agent/examples/workspace/visualize_convergence.py:52: UserWarning: Tight layout not applied. The bottom and top margins cannot be made large enough to accommodate all axes decorations.
+# STDERR:  /Users/mikegros/Projects/AIDI/oppenai/examples/workspace/visualize_convergence.py:52: UserWarning: Tight layout not applied. The bottom and top margins cannot be made large enough to accommodate all axes decorations.
 #   plt.tight_layout()
 
 # The visualization script executed as follows:
@@ -759,9 +765,9 @@ if __name__ == "__main__":
 # Written code to file: ./workspace/step5_1.py
 # [PASSED] the safety check: python step5_1.py
 # RUNNING:  python step5_1.py
-# STDOUT:  
+# STDOUT:
 # STDERR:  Traceback (most recent call last):
-#   File "/Users/mikegros/Projects/AIDI/lanl_scientific_agent/examples/workspace/step5_1.py", line 12, in <module>
+#   File "/Users/mikegros/Projects/AIDI/oppenai/examples/workspace/step5_1.py", line 12, in <module>
 #     raise ValueError("The file does not contain a column named 'log Yield'.")
 # ValueError: The file does not contain a column named 'log Yield'.
 # Writing filename  step5_1.py
@@ -784,7 +790,7 @@ if __name__ == "__main__":
 # Test set loaded successfully
 # Verification message: Data contains both input features and 'log Yield'; format is as expected.
 
-# STDERR:  
+# STDERR:
 # The test set was successfully loaded and verified. The script found a column named "logYield" that matched the expected target "log Yield", renamed it accordingly, and confirmed that both the input features and the target were present. The data has 484 rows and 6 columns overall, with the test set having 97 samples and 5 input features each. The format, including shape, dtypes, and column names, is as expected.
 # $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 # $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
@@ -825,7 +831,7 @@ if __name__ == "__main__":
 #  15.3339405]
 # Output shape matches expectations: torch.Size([97])
 
-# STDERR:  
+# STDERR:
 # The GP model completed training through 200 iterations (with loss decreasing from 2.863 to 2.325), and predictions on the test set were generated by passing the test inputs through the trained model. The mean of the GP's predictive distribution was extracted, resulting in a one-dimensional array of 97 prediction values—exactly matching the number of test samples. This step confirms that the GP model successfully returns predictions with the correct shape for subsequent evaluation.
 # $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 # $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
@@ -986,7 +992,7 @@ if __name__ == "__main__":
 # BNN predictions successfully generated. Shape: (97,)
 # The BNN's predictive inference yielded summarized predictions as a one-dimensional array.
 
-# STDERR:  
+# STDERR:
 #   0%|          | 0/1500 [00:00<?, ?it/s]
 # warmup:   0%|          | 1/1500 [00:01<28:16,  1.13s/it, 1 steps of size 2.34e+00. acc. prob=0.00]
 # warmup:   1%|          | 16/1500 [00:01<01:24, 17.55it/s, 511 steps of size 7.61e-03. acc. prob=0.65]
@@ -997,28 +1003,28 @@ if __name__ == "__main__":
 # warmup:   4%|▍         | 63/1500 [00:01<00:22, 64.42it/s, 511 steps of size 9.21e-03. acc. prob=0.75]
 # warmup:   5%|▍         | 72/1500 [00:01<00:20, 68.27it/s, 1023 steps of size 6.72e-03. acc. prob=0.75]
 # warmup:   6%|▌         | 85/1500 [00:02<00:17, 79.16it/s, 1023 steps of size 5.25e-03. acc. prob=0.75]
-# warmup:   6%|▋         | 95/1500 [00:02<00:17, 80.89it/s, 511 steps of size 9.85e-03. acc. prob=0.76] 
+# warmup:   6%|▋         | 95/1500 [00:02<00:17, 80.89it/s, 511 steps of size 9.85e-03. acc. prob=0.76]
 # warmup:   7%|▋         | 104/1500 [00:02<00:16, 82.73it/s, 511 steps of size 1.94e-02. acc. prob=0.76]
 # warmup:   8%|▊         | 113/1500 [00:02<00:17, 81.41it/s, 511 steps of size 1.45e-02. acc. prob=0.76]
 # warmup:   8%|▊         | 123/1500 [00:02<00:16, 84.43it/s, 511 steps of size 1.26e-02. acc. prob=0.76]
 # warmup:   9%|▉         | 133/1500 [00:02<00:16, 84.70it/s, 1023 steps of size 5.99e-03. acc. prob=0.76]
-# warmup:   9%|▉         | 142/1500 [00:02<00:16, 82.04it/s, 511 steps of size 1.28e-02. acc. prob=0.77] 
+# warmup:   9%|▉         | 142/1500 [00:02<00:16, 82.04it/s, 511 steps of size 1.28e-02. acc. prob=0.77]
 # warmup:  10%|█         | 151/1500 [00:02<00:17, 78.64it/s, 511 steps of size 1.18e-01. acc. prob=0.77]
 # warmup:  11%|█         | 159/1500 [00:02<00:17, 77.96it/s, 511 steps of size 7.96e-03. acc. prob=0.76]
 # warmup:  11%|█▏        | 169/1500 [00:03<00:16, 81.54it/s, 1023 steps of size 6.39e-03. acc. prob=0.77]
 # warmup:  12%|█▏        | 179/1500 [00:03<00:16, 82.19it/s, 1023 steps of size 6.72e-03. acc. prob=0.77]
-# warmup:  13%|█▎        | 190/1500 [00:03<00:14, 89.11it/s, 511 steps of size 1.06e-02. acc. prob=0.77] 
+# warmup:  13%|█▎        | 190/1500 [00:03<00:14, 89.11it/s, 511 steps of size 1.06e-02. acc. prob=0.77]
 # warmup:  13%|█▎        | 200/1500 [00:03<00:15, 83.98it/s, 511 steps of size 5.68e-03. acc. prob=0.77]
 # warmup:  14%|█▍        | 209/1500 [00:03<00:16, 78.40it/s, 767 steps of size 8.44e-03. acc. prob=0.77]
 # warmup:  14%|█▍        | 217/1500 [00:03<00:16, 77.89it/s, 511 steps of size 1.59e-02. acc. prob=0.77]
 # warmup:  15%|█▌        | 230/1500 [00:03<00:14, 89.28it/s, 511 steps of size 1.44e-02. acc. prob=0.77]
 # warmup:  16%|█▌        | 240/1500 [00:03<00:14, 85.74it/s, 255 steps of size 2.65e-02. acc. prob=0.78]
 # warmup:  17%|█▋        | 256/1500 [00:03<00:12, 103.47it/s, 511 steps of size 8.79e-03. acc. prob=0.77]
-# warmup:  18%|█▊        | 267/1500 [00:04<00:13, 89.95it/s, 511 steps of size 1.04e-02. acc. prob=0.77] 
+# warmup:  18%|█▊        | 267/1500 [00:04<00:13, 89.95it/s, 511 steps of size 1.04e-02. acc. prob=0.77]
 # warmup:  19%|█▊        | 278/1500 [00:04<00:13, 93.91it/s, 255 steps of size 3.53e-03. acc. prob=0.77]
 # warmup:  19%|█▉        | 288/1500 [00:04<00:13, 88.33it/s, 511 steps of size 1.32e-02. acc. prob=0.78]
 # warmup:  20%|██        | 302/1500 [00:04<00:11, 100.84it/s, 511 steps of size 1.00e-02. acc. prob=0.78]
-# warmup:  21%|██        | 313/1500 [00:04<00:12, 91.80it/s, 511 steps of size 1.70e-02. acc. prob=0.78] 
+# warmup:  21%|██        | 313/1500 [00:04<00:12, 91.80it/s, 511 steps of size 1.70e-02. acc. prob=0.78]
 # warmup:  22%|██▏       | 327/1500 [00:04<00:11, 102.50it/s, 255 steps of size 1.82e-02. acc. prob=0.78]
 # warmup:  23%|██▎       | 338/1500 [00:04<00:11, 104.47it/s, 255 steps of size 6.71e-03. acc. prob=0.78]
 # warmup:  23%|██▎       | 349/1500 [00:04<00:11, 102.48it/s, 255 steps of size 9.25e-03. acc. prob=0.78]
@@ -1030,10 +1036,10 @@ if __name__ == "__main__":
 # warmup:  28%|██▊       | 425/1500 [00:05<00:10, 105.99it/s, 255 steps of size 2.11e-02. acc. prob=0.78]
 # warmup:  29%|██▉       | 442/1500 [00:05<00:08, 121.75it/s, 255 steps of size 2.05e-02. acc. prob=0.78]
 # warmup:  30%|███       | 455/1500 [00:05<00:08, 117.05it/s, 1023 steps of size 6.57e-03. acc. prob=0.78]
-# warmup:  31%|███       | 467/1500 [00:05<00:09, 111.02it/s, 255 steps of size 5.14e-03. acc. prob=0.78] 
+# warmup:  31%|███       | 467/1500 [00:05<00:09, 111.02it/s, 255 steps of size 5.14e-03. acc. prob=0.78]
 # warmup:  32%|███▏      | 479/1500 [00:06<00:10, 101.08it/s, 255 steps of size 6.11e-03. acc. prob=0.78]
 # warmup:  33%|███▎      | 493/1500 [00:06<00:09, 105.04it/s, 1023 steps of size 6.10e-03. acc. prob=0.78]
-# sample:  34%|███▎      | 504/1500 [00:06<00:09, 105.77it/s, 255 steps of size 1.20e-02. acc. prob=0.89] 
+# sample:  34%|███▎      | 504/1500 [00:06<00:09, 105.77it/s, 255 steps of size 1.20e-02. acc. prob=0.89]
 # sample:  34%|███▍      | 515/1500 [00:06<00:09, 103.99it/s, 255 steps of size 1.20e-02. acc. prob=0.84]
 # sample:  35%|███▌      | 526/1500 [00:06<00:09, 104.21it/s, 511 steps of size 1.20e-02. acc. prob=0.87]
 # sample:  36%|███▌      | 538/1500 [00:06<00:08, 106.98it/s, 511 steps of size 1.20e-02. acc. prob=0.84]
@@ -1052,11 +1058,11 @@ if __name__ == "__main__":
 # sample:  47%|████▋     | 699/1500 [00:08<00:07, 113.11it/s, 511 steps of size 1.20e-02. acc. prob=0.85]
 # sample:  47%|████▋     | 711/1500 [00:08<00:07, 102.79it/s, 511 steps of size 1.20e-02. acc. prob=0.85]
 # sample:  48%|████▊     | 722/1500 [00:08<00:08, 94.75it/s, 1023 steps of size 1.20e-02. acc. prob=0.85]
-# sample:  49%|████▉     | 732/1500 [00:08<00:08, 86.27it/s, 255 steps of size 1.20e-02. acc. prob=0.84] 
+# sample:  49%|████▉     | 732/1500 [00:08<00:08, 86.27it/s, 255 steps of size 1.20e-02. acc. prob=0.84]
 # sample:  49%|████▉     | 741/1500 [00:08<00:09, 77.22it/s, 511 steps of size 1.20e-02. acc. prob=0.84]
 # sample:  50%|████▉     | 749/1500 [00:08<00:10, 70.94it/s, 1023 steps of size 1.20e-02. acc. prob=0.83]
 # sample:  50%|█████     | 757/1500 [00:08<00:10, 71.14it/s, 1023 steps of size 1.20e-02. acc. prob=0.83]
-# sample:  51%|█████     | 766/1500 [00:09<00:09, 73.84it/s, 511 steps of size 1.20e-02. acc. prob=0.83] 
+# sample:  51%|█████     | 766/1500 [00:09<00:09, 73.84it/s, 511 steps of size 1.20e-02. acc. prob=0.83]
 # sample:  52%|█████▏    | 775/1500 [00:09<00:09, 76.96it/s, 255 steps of size 1.20e-02. acc. prob=0.83]
 # sample:  52%|█████▏    | 784/1500 [00:09<00:09, 79.39it/s, 511 steps of size 1.20e-02. acc. prob=0.83]
 # sample:  53%|█████▎    | 793/1500 [00:09<00:09, 77.54it/s, 255 steps of size 1.20e-02. acc. prob=0.83]
@@ -1066,11 +1072,11 @@ if __name__ == "__main__":
 # sample:  55%|█████▌    | 827/1500 [00:09<00:09, 68.54it/s, 767 steps of size 1.20e-02. acc. prob=0.82]
 # sample:  56%|█████▌    | 836/1500 [00:10<00:09, 71.97it/s, 511 steps of size 1.20e-02. acc. prob=0.82]
 # sample:  56%|█████▋    | 844/1500 [00:10<00:09, 67.03it/s, 1023 steps of size 1.20e-02. acc. prob=0.81]
-# sample:  57%|█████▋    | 853/1500 [00:10<00:09, 71.80it/s, 255 steps of size 1.20e-02. acc. prob=0.81] 
+# sample:  57%|█████▋    | 853/1500 [00:10<00:09, 71.80it/s, 255 steps of size 1.20e-02. acc. prob=0.81]
 # sample:  57%|█████▋    | 862/1500 [00:10<00:08, 72.64it/s, 1023 steps of size 1.20e-02. acc. prob=0.81]
-# sample:  58%|█████▊    | 870/1500 [00:10<00:09, 68.14it/s, 511 steps of size 1.20e-02. acc. prob=0.81] 
+# sample:  58%|█████▊    | 870/1500 [00:10<00:09, 68.14it/s, 511 steps of size 1.20e-02. acc. prob=0.81]
 # sample:  58%|█████▊    | 877/1500 [00:10<00:09, 66.70it/s, 1023 steps of size 1.20e-02. acc. prob=0.81]
-# sample:  59%|█████▉    | 888/1500 [00:10<00:07, 76.98it/s, 511 steps of size 1.20e-02. acc. prob=0.81] 
+# sample:  59%|█████▉    | 888/1500 [00:10<00:07, 76.98it/s, 511 steps of size 1.20e-02. acc. prob=0.81]
 # sample:  60%|█████▉    | 896/1500 [00:10<00:08, 74.49it/s, 511 steps of size 1.20e-02. acc. prob=0.81]
 # sample:  60%|██████    | 905/1500 [00:10<00:07, 77.45it/s, 511 steps of size 1.20e-02. acc. prob=0.81]
 # sample:  61%|██████    | 914/1500 [00:11<00:07, 80.88it/s, 255 steps of size 1.20e-02. acc. prob=0.81]
@@ -1079,7 +1085,7 @@ if __name__ == "__main__":
 # sample:  63%|██████▎   | 942/1500 [00:11<00:06, 85.37it/s, 511 steps of size 1.20e-02. acc. prob=0.80]
 # sample:  63%|██████▎   | 951/1500 [00:11<00:06, 85.47it/s, 511 steps of size 1.20e-02. acc. prob=0.80]
 # sample:  64%|██████▍   | 961/1500 [00:11<00:06, 88.22it/s, 1023 steps of size 1.20e-02. acc. prob=0.80]
-# sample:  65%|██████▍   | 970/1500 [00:11<00:06, 82.96it/s, 255 steps of size 1.20e-02. acc. prob=0.80] 
+# sample:  65%|██████▍   | 970/1500 [00:11<00:06, 82.96it/s, 255 steps of size 1.20e-02. acc. prob=0.80]
 # sample:  65%|██████▌   | 979/1500 [00:11<00:06, 81.09it/s, 255 steps of size 1.20e-02. acc. prob=0.80]
 # sample:  66%|██████▌   | 988/1500 [00:11<00:06, 79.03it/s, 767 steps of size 1.20e-02. acc. prob=0.80]
 # sample:  66%|██████▋   | 996/1500 [00:12<00:06, 75.89it/s, 255 steps of size 1.20e-02. acc. prob=0.80]
@@ -1087,61 +1093,61 @@ if __name__ == "__main__":
 # sample:  67%|██████▋   | 1012/1500 [00:12<00:06, 72.54it/s, 511 steps of size 1.20e-02. acc. prob=0.80]
 # sample:  68%|██████▊   | 1020/1500 [00:12<00:06, 68.58it/s, 767 steps of size 1.20e-02. acc. prob=0.80]
 # sample:  69%|██████▊   | 1028/1500 [00:12<00:06, 69.43it/s, 1023 steps of size 1.20e-02. acc. prob=0.80]
-# sample:  69%|██████▉   | 1035/1500 [00:12<00:06, 67.49it/s, 511 steps of size 1.20e-02. acc. prob=0.80] 
+# sample:  69%|██████▉   | 1035/1500 [00:12<00:06, 67.49it/s, 511 steps of size 1.20e-02. acc. prob=0.80]
 # sample:  70%|██████▉   | 1045/1500 [00:12<00:06, 71.89it/s, 1023 steps of size 1.20e-02. acc. prob=0.79]
-# sample:  70%|███████   | 1054/1500 [00:12<00:05, 75.45it/s, 511 steps of size 1.20e-02. acc. prob=0.79] 
+# sample:  70%|███████   | 1054/1500 [00:12<00:05, 75.45it/s, 511 steps of size 1.20e-02. acc. prob=0.79]
 # sample:  71%|███████   | 1062/1500 [00:12<00:05, 74.19it/s, 511 steps of size 1.20e-02. acc. prob=0.79]
 # sample:  71%|███████▏  | 1070/1500 [00:13<00:06, 66.51it/s, 1023 steps of size 1.20e-02. acc. prob=0.79]
-# sample:  72%|███████▏  | 1077/1500 [00:13<00:06, 65.49it/s, 255 steps of size 1.20e-02. acc. prob=0.79] 
+# sample:  72%|███████▏  | 1077/1500 [00:13<00:06, 65.49it/s, 255 steps of size 1.20e-02. acc. prob=0.79]
 # sample:  73%|███████▎  | 1088/1500 [00:13<00:05, 72.95it/s, 1023 steps of size 1.20e-02. acc. prob=0.79]
 # sample:  73%|███████▎  | 1097/1500 [00:13<00:05, 73.13it/s, 1023 steps of size 1.20e-02. acc. prob=0.79]
 # sample:  74%|███████▎  | 1105/1500 [00:13<00:05, 71.71it/s, 1023 steps of size 1.20e-02. acc. prob=0.79]
 # sample:  74%|███████▍  | 1114/1500 [00:13<00:05, 72.32it/s, 1023 steps of size 1.20e-02. acc. prob=0.79]
-# sample:  75%|███████▍  | 1122/1500 [00:13<00:05, 72.33it/s, 511 steps of size 1.20e-02. acc. prob=0.79] 
+# sample:  75%|███████▍  | 1122/1500 [00:13<00:05, 72.33it/s, 511 steps of size 1.20e-02. acc. prob=0.79]
 # sample:  75%|███████▌  | 1132/1500 [00:13<00:04, 78.77it/s, 511 steps of size 1.20e-02. acc. prob=0.79]
 # sample:  76%|███████▌  | 1140/1500 [00:14<00:04, 74.65it/s, 511 steps of size 1.20e-02. acc. prob=0.79]
 # sample:  77%|███████▋  | 1151/1500 [00:14<00:04, 81.79it/s, 511 steps of size 1.20e-02. acc. prob=0.79]
 # sample:  77%|███████▋  | 1160/1500 [00:14<00:04, 79.17it/s, 255 steps of size 1.20e-02. acc. prob=0.79]
 # sample:  78%|███████▊  | 1169/1500 [00:14<00:04, 77.44it/s, 1023 steps of size 1.20e-02. acc. prob=0.79]
 # sample:  78%|███████▊  | 1177/1500 [00:14<00:04, 71.49it/s, 1023 steps of size 1.20e-02. acc. prob=0.78]
-# sample:  79%|███████▉  | 1185/1500 [00:14<00:04, 66.79it/s, 255 steps of size 1.20e-02. acc. prob=0.78] 
+# sample:  79%|███████▉  | 1185/1500 [00:14<00:04, 66.79it/s, 255 steps of size 1.20e-02. acc. prob=0.78]
 # sample:  80%|███████▉  | 1195/1500 [00:14<00:04, 73.86it/s, 511 steps of size 1.20e-02. acc. prob=0.78]
 # sample:  80%|████████  | 1204/1500 [00:14<00:03, 76.95it/s, 511 steps of size 1.20e-02. acc. prob=0.78]
 # sample:  81%|████████  | 1213/1500 [00:15<00:03, 78.04it/s, 1023 steps of size 1.20e-02. acc. prob=0.78]
 # sample:  81%|████████▏ | 1222/1500 [00:15<00:03, 76.61it/s, 1023 steps of size 1.20e-02. acc. prob=0.78]
-# sample:  82%|████████▏ | 1230/1500 [00:15<00:03, 76.52it/s, 511 steps of size 1.20e-02. acc. prob=0.78] 
+# sample:  82%|████████▏ | 1230/1500 [00:15<00:03, 76.52it/s, 511 steps of size 1.20e-02. acc. prob=0.78]
 # sample:  83%|████████▎ | 1238/1500 [00:15<00:03, 74.52it/s, 255 steps of size 1.20e-02. acc. prob=0.78]
 # sample:  83%|████████▎ | 1248/1500 [00:15<00:03, 80.37it/s, 255 steps of size 1.20e-02. acc. prob=0.78]
 # sample:  84%|████████▍ | 1257/1500 [00:15<00:02, 81.83it/s, 511 steps of size 1.20e-02. acc. prob=0.78]
 # sample:  84%|████████▍ | 1267/1500 [00:15<00:02, 83.11it/s, 1023 steps of size 1.20e-02. acc. prob=0.78]
 # sample:  85%|████████▌ | 1276/1500 [00:15<00:02, 77.64it/s, 1023 steps of size 1.20e-02. acc. prob=0.77]
-# sample:  86%|████████▌ | 1286/1500 [00:15<00:02, 82.42it/s, 511 steps of size 1.20e-02. acc. prob=0.77] 
+# sample:  86%|████████▌ | 1286/1500 [00:15<00:02, 82.42it/s, 511 steps of size 1.20e-02. acc. prob=0.77]
 # sample:  86%|████████▋ | 1295/1500 [00:16<00:02, 78.62it/s, 255 steps of size 1.20e-02. acc. prob=0.77]
 # sample:  87%|████████▋ | 1305/1500 [00:16<00:02, 80.86it/s, 1023 steps of size 1.20e-02. acc. prob=0.77]
-# sample:  88%|████████▊ | 1314/1500 [00:16<00:02, 75.43it/s, 255 steps of size 1.20e-02. acc. prob=0.77] 
+# sample:  88%|████████▊ | 1314/1500 [00:16<00:02, 75.43it/s, 255 steps of size 1.20e-02. acc. prob=0.77]
 # sample:  88%|████████▊ | 1322/1500 [00:16<00:02, 72.22it/s, 511 steps of size 1.20e-02. acc. prob=0.77]
 # sample:  89%|████████▊ | 1330/1500 [00:16<00:02, 65.50it/s, 1023 steps of size 1.20e-02. acc. prob=0.77]
 # sample:  89%|████████▉ | 1340/1500 [00:16<00:02, 71.03it/s, 1023 steps of size 1.20e-02. acc. prob=0.77]
 # sample:  90%|████████▉ | 1348/1500 [00:16<00:02, 72.46it/s, 1023 steps of size 1.20e-02. acc. prob=0.77]
-# sample:  90%|█████████ | 1356/1500 [00:16<00:02, 71.36it/s, 511 steps of size 1.20e-02. acc. prob=0.77] 
+# sample:  90%|█████████ | 1356/1500 [00:16<00:02, 71.36it/s, 511 steps of size 1.20e-02. acc. prob=0.77]
 # sample:  91%|█████████ | 1364/1500 [00:17<00:01, 71.53it/s, 511 steps of size 1.20e-02. acc. prob=0.77]
 # sample:  91%|█████████▏| 1372/1500 [00:17<00:01, 69.67it/s, 511 steps of size 1.20e-02. acc. prob=0.77]
 # sample:  92%|█████████▏| 1382/1500 [00:17<00:01, 75.71it/s, 767 steps of size 1.20e-02. acc. prob=0.77]
 # sample:  93%|█████████▎| 1390/1500 [00:17<00:01, 76.74it/s, 255 steps of size 1.20e-02. acc. prob=0.77]
 # sample:  93%|█████████▎| 1400/1500 [00:17<00:01, 79.13it/s, 1023 steps of size 1.20e-02. acc. prob=0.77]
 # sample:  94%|█████████▍| 1408/1500 [00:17<00:01, 67.35it/s, 1023 steps of size 1.20e-02. acc. prob=0.77]
-# sample:  94%|█████████▍| 1417/1500 [00:17<00:01, 71.77it/s, 511 steps of size 1.20e-02. acc. prob=0.77] 
+# sample:  94%|█████████▍| 1417/1500 [00:17<00:01, 71.77it/s, 511 steps of size 1.20e-02. acc. prob=0.77]
 # sample:  95%|█████████▌| 1425/1500 [00:17<00:01, 72.75it/s, 1023 steps of size 1.20e-02. acc. prob=0.77]
-# sample:  96%|█████████▌| 1434/1500 [00:17<00:00, 75.07it/s, 511 steps of size 1.20e-02. acc. prob=0.77] 
+# sample:  96%|█████████▌| 1434/1500 [00:17<00:00, 75.07it/s, 511 steps of size 1.20e-02. acc. prob=0.77]
 # sample:  96%|█████████▌| 1442/1500 [00:18<00:00, 74.20it/s, 255 steps of size 1.20e-02. acc. prob=0.77]
 # sample:  97%|█████████▋| 1450/1500 [00:18<00:00, 73.56it/s, 1023 steps of size 1.20e-02. acc. prob=0.77]
-# sample:  97%|█████████▋| 1459/1500 [00:18<00:00, 76.96it/s, 255 steps of size 1.20e-02. acc. prob=0.77] 
+# sample:  97%|█████████▋| 1459/1500 [00:18<00:00, 76.96it/s, 255 steps of size 1.20e-02. acc. prob=0.77]
 # sample:  98%|█████████▊| 1469/1500 [00:18<00:00, 80.84it/s, 1023 steps of size 1.20e-02. acc. prob=0.77]
 # sample:  99%|█████████▊| 1478/1500 [00:18<00:00, 80.81it/s, 1023 steps of size 1.20e-02. acc. prob=0.77]
-# sample:  99%|█████████▉| 1487/1500 [00:18<00:00, 80.95it/s, 767 steps of size 1.20e-02. acc. prob=0.77] 
+# sample:  99%|█████████▉| 1487/1500 [00:18<00:00, 80.95it/s, 767 steps of size 1.20e-02. acc. prob=0.77]
 # sample: 100%|█████████▉| 1496/1500 [00:18<00:00, 77.44it/s, 1023 steps of size 1.20e-02. acc. prob=0.77]
-# sample: 100%|██████████| 1500/1500 [00:18<00:00, 79.80it/s, 255 steps of size 1.20e-02. acc. prob=0.77] 
-# /Users/mikegros/Projects/AIDI/lanl_scientific_agent/examples/workspace/bnn_predictions.py:104: UserWarning: Sample's batch dimension size 1000 is different from the provided 500 num_samples argument. Defaulting to 1000.
+# sample: 100%|██████████| 1500/1500 [00:18<00:00, 79.80it/s, 255 steps of size 1.20e-02. acc. prob=0.77]
+# /Users/mikegros/Projects/AIDI/oppenai/examples/workspace/bnn_predictions.py:104: UserWarning: Sample's batch dimension size 1000 is different from the provided 500 num_samples argument. Defaulting to 1000.
 #   predictive = Predictive(bnn_model, posterior_samples=posterior_samples, num_samples=500)
 # 2025-04-07 11:03:02.252 Python[73975:10358133] +[CATransaction synchronize] called within transaction
 # The step generated BNN predictions using posterior predictive sampling from a Bayesian neural network defined with one hidden layer. After running MCMC (with 500 warmup and 1000 samples), predictions for the test set were obtained by averaging over posterior samples. The resulting output is a one-dimensional array with 97 elements, which matches the number of test samples. In addition, histograms for the predictive distributions of the first few test points were generated to support visual assessment. This confirms that the predictive inference of the BNN is correctly implemented and meets the expected format and shape.
@@ -1157,7 +1163,7 @@ if __name__ == "__main__":
 # STDOUT:  finished_cases.csv found.
 
 # STDERR:  Traceback (most recent call last):
-#   File "/Users/mikegros/Projects/AIDI/lanl_scientific_agent/examples/workspace/r2_scores.py", line 31, in <module>
+#   File "/Users/mikegros/Projects/AIDI/oppenai/examples/workspace/r2_scores.py", line 31, in <module>
 #     raise ValueError("No column with 'log Yield' found in the data.")
 # ValueError: No column with 'log Yield' found in the data.
 
@@ -1171,16 +1177,16 @@ if __name__ == "__main__":
 # R² score for Bayesian Neural Network model: 0.8967
 # The Bayesian Neural Network model fits the data better based on R² score.
 
-# STDERR:  
+# STDERR:
 #   0%|          | 0/1500 [00:00<?, ?it/s]
 # warmup:   0%|          | 1/1500 [00:01<30:01,  1.20s/it, 1 steps of size 2.34e+00. acc. prob=0.00]
 # warmup:   1%|          | 15/1500 [00:01<01:36, 15.34it/s, 1023 steps of size 8.07e-03. acc. prob=0.65]
-# warmup:   2%|▏         | 31/1500 [00:01<00:43, 34.05it/s, 255 steps of size 2.74e-02. acc. prob=0.73] 
+# warmup:   2%|▏         | 31/1500 [00:01<00:43, 34.05it/s, 255 steps of size 2.74e-02. acc. prob=0.73]
 # warmup:   3%|▎         | 50/1500 [00:01<00:24, 58.36it/s, 127 steps of size 3.18e-02. acc. prob=0.75]
 # warmup:   4%|▍         | 66/1500 [00:01<00:18, 76.40it/s, 255 steps of size 3.28e-02. acc. prob=0.76]
 # warmup:   5%|▌         | 82/1500 [00:01<00:15, 93.03it/s, 767 steps of size 1.63e-02. acc. prob=0.76]
 # warmup:   7%|▋         | 104/1500 [00:01<00:11, 120.61it/s, 255 steps of size 4.17e-02. acc. prob=0.76]
-# warmup:   8%|▊         | 121/1500 [00:01<00:10, 127.45it/s, 4 steps of size 5.80e-03. acc. prob=0.76]  
+# warmup:   8%|▊         | 121/1500 [00:01<00:10, 127.45it/s, 4 steps of size 5.80e-03. acc. prob=0.76]
 # warmup:   9%|▉         | 138/1500 [00:02<00:11, 120.18it/s, 255 steps of size 2.81e-02. acc. prob=0.77]
 # warmup:  10%|█         | 156/1500 [00:02<00:10, 133.66it/s, 255 steps of size 1.82e-02. acc. prob=0.77]
 # warmup:  11%|█▏        | 172/1500 [00:02<00:10, 124.29it/s, 255 steps of size 3.51e-02. acc. prob=0.77]
@@ -1192,7 +1198,7 @@ if __name__ == "__main__":
 # warmup:  18%|█▊        | 272/1500 [00:03<00:07, 163.41it/s, 127 steps of size 3.64e-02. acc. prob=0.78]
 # warmup:  19%|█▉        | 289/1500 [00:03<00:07, 162.18it/s, 127 steps of size 1.92e-02. acc. prob=0.78]
 # warmup:  21%|██        | 308/1500 [00:03<00:07, 168.73it/s, 127 steps of size 1.35e-02. acc. prob=0.78]
-# warmup:  22%|██▏       | 326/1500 [00:03<00:07, 156.11it/s, 63 steps of size 2.02e-02. acc. prob=0.78] 
+# warmup:  22%|██▏       | 326/1500 [00:03<00:07, 156.11it/s, 63 steps of size 2.02e-02. acc. prob=0.78]
 # warmup:  23%|██▎       | 344/1500 [00:03<00:07, 162.57it/s, 255 steps of size 1.99e-02. acc. prob=0.78]
 # warmup:  24%|██▍       | 361/1500 [00:03<00:06, 164.00it/s, 255 steps of size 2.32e-02. acc. prob=0.78]
 # warmup:  25%|██▌       | 381/1500 [00:03<00:06, 171.23it/s, 255 steps of size 2.13e-02. acc. prob=0.78]
@@ -1257,8 +1263,8 @@ if __name__ == "__main__":
 
 # Both models were trained and evaluated using the finished_cases.csv dataset (or a synthetic dataset if the file did not exist). The Gaussian Process model (GP) trained with gpytorch and the Bayesian Neural Network (BNN) trained with numpyro were both fit to predict "log Yield" (or its variant name) using the remaining features. In the current step, the following was accomplished:
 
-# • R² scores were computed using the sklearn.metrics.r2_score function for both models on the test set.  
-# • The GP model achieved an R² score of approximately 0.8957, while the BNN achieved about 0.8967, indicating that the BNN model fits the data slightly better based on this metric.  
+# • R² scores were computed using the sklearn.metrics.r2_score function for both models on the test set.
+# • The GP model achieved an R² score of approximately 0.8957, while the BNN achieved about 0.8967, indicating that the BNN model fits the data slightly better based on this metric.
 # • Additionally, uncertainty quantification was assessed via visualization: histograms for the BNN predictive distributions (with the true value marked for each test point) and errorbar plots showing the GP mean predictions plus uncertainties.
 
 # This step confirms that the computed R² scores accurately reflect model performance and that both models’ uncertainty estimates can be visually contrasted against the true values.
@@ -1271,8 +1277,8 @@ if __name__ == "__main__":
 # Written code to file: ./workspace/compare_model_performance.py
 # [PASSED] the safety check: python3 compare_model_performance.py
 # RUNNING:  python3 compare_model_performance.py
-# STDOUT:  
-# STDERR:    File "/Users/mikegros/Projects/AIDI/lanl_scientific_agent/examples/workspace/compare_model_performance.py", line 69
+# STDOUT:
+# STDERR:    File "/Users/mikegros/Projects/AIDI/oppenai/examples/workspace/compare_model_performance.py", line 69
 #     context += "\nBoth models have equal R² scores.
 #                                                     ^
 # SyntaxError: EOL while scanning string literal
@@ -1284,9 +1290,9 @@ if __name__ == "__main__":
 # STDOUT:  Loading data from finished_cases.csv...
 
 # STDERR:  Traceback (most recent call last):
-#   File "/Users/mikegros/Projects/AIDI/lanl_scientific_agent/examples/workspace/compare_model_performance.py", line 74, in <module>
+#   File "/Users/mikegros/Projects/AIDI/oppenai/examples/workspace/compare_model_performance.py", line 74, in <module>
 #     df, output_column = load_data()
-#   File "/Users/mikegros/Projects/AIDI/lanl_scientific_agent/examples/workspace/compare_model_performance.py", line 18, in load_data
+#   File "/Users/mikegros/Projects/AIDI/oppenai/examples/workspace/compare_model_performance.py", line 18, in load_data
 #     raise ValueError("No column corresponding to 'log Yield' was found in the dataset.")
 # ValueError: No column corresponding to 'log Yield' was found in the dataset.
 
@@ -1304,7 +1310,7 @@ if __name__ == "__main__":
 # ################################################################################
 # {'id': 'step6', 'name': 'Assess Uncertainty Quantification', 'description': 'Generate prediction intervals or credible intervals for the test set predictions from both models. Compute the coverage metric, which is the percentage of true test targets that fall within these predicted uncertainty intervals. Produce visualizations (e.g., scatter plots with uncertainty bands) to illustrate the uncertainty quantification of both models.', 'requires_code': True, 'expected_outputs': ['Coverage metrics for both the GP model and the Bayesian neural network', 'Visualizations that overlay the uncertainty intervals with actual test data points', 'Plots that help compare the quality of uncertainty quantification between the models'], 'success_criteria': ['Coverage metrics are computed correctly', 'The visualizations clearly annotate the uncertainty intervals', 'Predicted uncertainty intervals are consistent and comparable between models', 'The approach to generate uncertainty intervals is similarly applied to both models']}
 # ################################################################################
-# 
+#
 # $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 # $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 # {'id': 'step6.1', 'name': 'Define Prediction Interval Functions', 'description': 'Define two separate functions to compute prediction intervals for the test set. For the Gaussian process model, the function should calculate lower and upper bounds using the predicted mean and standard deviation (e.g., mean ± 1.96 * std for a 95% confidence interval). For the Bayesian neural network, the function should compute empirical prediction intervals using the posterior predictive samples, such as the 2.5th and 97.5th percentiles (to form a 95% credible interval). Include error checking to handle cases like missing values or invalid intervals.', 'requires_code': True, 'expected_outputs': ['A function that accepts GP model predictions (mean and std) and returns lower and upper prediction bounds', 'A function that accepts Bayesian NN posterior predictive samples and returns lower and upper credible bounds'], 'success_criteria': ['Functions correctly compute prediction intervals for both models', 'Handles edge cases (e.g., missing data or near-zero variance) gracefully', 'Intervals correspond to the desired 95% confidence/credible level']}
@@ -1328,17 +1334,17 @@ if __name__ == "__main__":
 # Written code to file: ./workspace/step6_2_prediction_intervals.py
 # [PASSED] the safety check: python step6_2_prediction_intervals.py
 # RUNNING:  python step6_2_prediction_intervals.py
-# STDOUT:  
+# STDOUT:
 # STDERR:  Traceback (most recent call last):
-#   File "/Users/mikegros/Projects/AIDI/lanl_scientific_agent/examples/workspace/step6_2_prediction_intervals.py", line 85, in <module>
+#   File "/Users/mikegros/Projects/AIDI/oppenai/examples/workspace/step6_2_prediction_intervals.py", line 85, in <module>
 #     raise ValueError('No column containing "log Yield" found in the CSV file.')
 # ValueError: No column containing "log Yield" found in the CSV file.
 # Writing filename  step6_2_prediction_intervals.py
 # Written code to file: ./workspace/step6_2_prediction_intervals.py
 # [PASSED] the safety check: python step6_2_prediction_intervals.py
 # RUNNING:  python step6_2_prediction_intervals.py
-# STDOUT:  
-# STDERR:    File "/Users/mikegros/Projects/AIDI/lanl_scientific_agent/examples/workspace/step6_2_prediction_intervals.py", line 72
+# STDOUT:
+# STDERR:    File "/Users/mikegros/Projects/AIDI/oppenai/examples/workspace/step6_2_prediction_intervals.py", line 72
 #     data = pd.read_csv('finished_cases.csv')
 #                                             ^
 # IndentationError: unindent does not match any outer indentation level
@@ -1346,9 +1352,9 @@ if __name__ == "__main__":
 # Written code to file: ./workspace/step6_2_prediction_intervals.py
 # [PASSED] the safety check: python step6_2_prediction_intervals.py
 # RUNNING:  python step6_2_prediction_intervals.py
-# STDOUT:  
+# STDOUT:
 # STDERR:  Traceback (most recent call last):
-#   File "/Users/mikegros/Projects/AIDI/lanl_scientific_agent/examples/workspace/step6_2_prediction_intervals.py", line 78, in <module>
+#   File "/Users/mikegros/Projects/AIDI/oppenai/examples/workspace/step6_2_prediction_intervals.py", line 78, in <module>
 #     raise ValueError(f'No column containing "log Yield" found in the CSV file. Available columns: {available}')
 # ValueError: No column containing "log Yield" found in the CSV file. Available columns: ['logYield', 'DT', 'Inner Shell', 'Tamper', 'Foam', 'Ablator']
 
@@ -1356,8 +1362,8 @@ if __name__ == "__main__":
 # Written code to file: ./workspace/step6_2_prediction_intervals.py
 # [PASSED] the safety check: python step6_2_prediction_intervals.py
 # RUNNING:  python step6_2_prediction_intervals.py
-# STDOUT:  
-# STDERR:    File "/Users/mikegros/Projects/AIDI/lanl_scientific_agent/examples/workspace/step6_2_prediction_intervals.py", line 67
+# STDOUT:
+# STDERR:    File "/Users/mikegros/Projects/AIDI/oppenai/examples/workspace/step6_2_prediction_intervals.py", line 67
 #     data = pd.read_csv('finished_cases.csv')
 #                                             ^
 # IndentationError: unindent does not match any outer indentation level
@@ -1381,7 +1387,7 @@ if __name__ == "__main__":
 # RUNNING:  python compute_coverage_metrics.py
 # STDOUT:  Error: No column containing "log Yield" found in the CSV.
 
-# STDERR:  
+# STDERR:
 # Writing filename  compute_coverage_metrics_modified.py
 # Written code to file: ./workspace/compute_coverage_metrics_modified.py
 # [PASSED] the safety check: python compute_coverage_metrics_modified.py
@@ -1420,11 +1426,11 @@ if __name__ == "__main__":
 # Written code to file: ./workspace/model_predictions.py
 # [PASSED] the safety check: python model_predictions.py
 # RUNNING:  python model_predictions.py
-# STDOUT:  
+# STDOUT:
 # STDERR:  Traceback (most recent call last):
-#   File "/Users/mikegros/Projects/AIDI/lanl_scientific_agent/examples/workspace/model_predictions.py", line 224, in <module>
+#   File "/Users/mikegros/Projects/AIDI/oppenai/examples/workspace/model_predictions.py", line 224, in <module>
 #     main()
-#   File "/Users/mikegros/Projects/AIDI/lanl_scientific_agent/examples/workspace/model_predictions.py", line 143, in main
+#   File "/Users/mikegros/Projects/AIDI/oppenai/examples/workspace/model_predictions.py", line 143, in main
 #     raise ValueError("Target column with 'log Yield' not found in the CSV file.")
 # ValueError: Target column with 'log Yield' not found in the CSV file.
 # Writing filename  model_predictions.py
@@ -1439,25 +1445,25 @@ if __name__ == "__main__":
 # BNN Model - 95% coverage: 97.9%
 # Plot saved as model_predictions.png
 
-# STDERR:  
+# STDERR:
 #   0%|          | 0/1500 [00:00<?, ?it/s]
 # warmup:   0%|          | 1/1500 [00:01<27:18,  1.09s/it, 1 steps of size 2.34e+00. acc. prob=0.00]
 # warmup:   2%|▏         | 23/1500 [00:01<00:56, 26.06it/s, 1023 steps of size 7.86e-03. acc. prob=0.69]
 # warmup:   2%|▏         | 36/1500 [00:01<00:37, 38.79it/s, 1023 steps of size 1.34e-02. acc. prob=0.73]
-# warmup:   3%|▎         | 51/1500 [00:01<00:25, 56.01it/s, 511 steps of size 1.94e-02. acc. prob=0.75] 
+# warmup:   3%|▎         | 51/1500 [00:01<00:25, 56.01it/s, 511 steps of size 1.94e-02. acc. prob=0.75]
 # warmup:   4%|▍         | 66/1500 [00:01<00:19, 73.16it/s, 1023 steps of size 1.04e-02. acc. prob=0.75]
-# warmup:   6%|▌         | 86/1500 [00:01<00:14, 98.87it/s, 255 steps of size 2.28e-02. acc. prob=0.76] 
+# warmup:   6%|▌         | 86/1500 [00:01<00:14, 98.87it/s, 255 steps of size 2.28e-02. acc. prob=0.76]
 # warmup:   7%|▋         | 102/1500 [00:01<00:13, 106.29it/s, 1 steps of size 4.41e-02. acc. prob=0.76]
 # warmup:   8%|▊         | 117/1500 [00:01<00:13, 99.60it/s, 38 steps of size 1.11e-02. acc. prob=0.76]
 # warmup:   9%|▊         | 130/1500 [00:02<00:15, 89.78it/s, 255 steps of size 4.59e-02. acc. prob=0.77]
 # warmup:   9%|▉         | 141/1500 [00:02<00:15, 90.13it/s, 511 steps of size 2.76e-02. acc. prob=0.77]
-# warmup:  10%|█         | 152/1500 [00:02<00:15, 87.08it/s, 1 steps of size 6.55e-02. acc. prob=0.77]  
+# warmup:  10%|█         | 152/1500 [00:02<00:15, 87.08it/s, 1 steps of size 6.55e-02. acc. prob=0.77]
 # warmup:  11%|█         | 162/1500 [00:02<00:16, 81.92it/s, 511 steps of size 1.86e-02. acc. prob=0.77]
 # warmup:  11%|█▏        | 171/1500 [00:02<00:16, 80.41it/s, 1023 steps of size 9.14e-03. acc. prob=0.77]
 # warmup:  12%|█▏        | 181/1500 [00:02<00:15, 83.62it/s, 1023 steps of size 1.22e-02. acc. prob=0.77]
-# warmup:  13%|█▎        | 194/1500 [00:02<00:13, 95.19it/s, 255 steps of size 2.84e-02. acc. prob=0.77] 
+# warmup:  13%|█▎        | 194/1500 [00:02<00:13, 95.19it/s, 255 steps of size 2.84e-02. acc. prob=0.77]
 # warmup:  14%|█▎        | 204/1500 [00:02<00:14, 91.59it/s, 1023 steps of size 1.08e-02. acc. prob=0.77]
-# warmup:  14%|█▍        | 214/1500 [00:03<00:13, 92.50it/s, 511 steps of size 1.78e-02. acc. prob=0.77] 
+# warmup:  14%|█▍        | 214/1500 [00:03<00:13, 92.50it/s, 511 steps of size 1.78e-02. acc. prob=0.77]
 # warmup:  15%|█▍        | 224/1500 [00:03<00:13, 92.12it/s, 511 steps of size 2.11e-02. acc. prob=0.78]
 # warmup:  16%|█▌        | 235/1500 [00:03<00:13, 95.80it/s, 511 steps of size 1.40e-02. acc. prob=0.78]
 # warmup:  16%|█▋        | 245/1500 [00:03<00:13, 94.96it/s, 511 steps of size 1.57e-02. acc. prob=0.78]
@@ -1465,19 +1471,19 @@ if __name__ == "__main__":
 # warmup:  18%|█▊        | 268/1500 [00:03<00:12, 99.33it/s, 1023 steps of size 5.44e-03. acc. prob=0.77]
 # warmup:  19%|█▊        | 280/1500 [00:03<00:11, 102.79it/s, 511 steps of size 1.10e-02. acc. prob=0.78]
 # warmup:  20%|█▉        | 296/1500 [00:03<00:10, 115.70it/s, 1023 steps of size 9.13e-03. acc. prob=0.78]
-# warmup:  21%|██        | 308/1500 [00:03<00:11, 107.05it/s, 511 steps of size 1.80e-02. acc. prob=0.78] 
+# warmup:  21%|██        | 308/1500 [00:03<00:11, 107.05it/s, 511 steps of size 1.80e-02. acc. prob=0.78]
 # warmup:  21%|██▏       | 321/1500 [00:04<00:10, 109.48it/s, 1023 steps of size 9.15e-03. acc. prob=0.78]
-# warmup:  22%|██▏       | 333/1500 [00:04<00:11, 104.56it/s, 255 steps of size 2.17e-02. acc. prob=0.78] 
+# warmup:  22%|██▏       | 333/1500 [00:04<00:11, 104.56it/s, 255 steps of size 2.17e-02. acc. prob=0.78]
 # warmup:  23%|██▎       | 347/1500 [00:04<00:10, 112.65it/s, 511 steps of size 2.38e-02. acc. prob=0.78]
 # warmup:  24%|██▍       | 361/1500 [00:04<00:09, 119.93it/s, 255 steps of size 3.10e-02. acc. prob=0.78]
 # warmup:  25%|██▌       | 378/1500 [00:04<00:08, 128.26it/s, 1023 steps of size 1.19e-02. acc. prob=0.78]
-# warmup:  26%|██▌       | 391/1500 [00:04<00:09, 122.46it/s, 127 steps of size 2.30e-02. acc. prob=0.78] 
+# warmup:  26%|██▌       | 391/1500 [00:04<00:09, 122.46it/s, 127 steps of size 2.30e-02. acc. prob=0.78]
 # warmup:  27%|██▋       | 408/1500 [00:04<00:08, 135.42it/s, 255 steps of size 1.22e-02. acc. prob=0.78]
 # warmup:  28%|██▊       | 422/1500 [00:04<00:08, 134.13it/s, 255 steps of size 2.00e-02. acc. prob=0.78]
 # warmup:  29%|██▉       | 438/1500 [00:04<00:07, 140.09it/s, 255 steps of size 2.54e-02. acc. prob=0.78]
 # warmup:  30%|███       | 453/1500 [00:05<00:07, 142.42it/s, 255 steps of size 2.00e-02. acc. prob=0.78]
 # warmup:  31%|███       | 468/1500 [00:05<00:08, 126.80it/s, 255 steps of size 3.99e-02. acc. prob=0.78]
-# warmup:  32%|███▏      | 482/1500 [00:05<00:08, 126.80it/s, 33 steps of size 9.68e-03. acc. prob=0.78] 
+# warmup:  32%|███▏      | 482/1500 [00:05<00:08, 126.80it/s, 33 steps of size 9.68e-03. acc. prob=0.78]
 # warmup:  33%|███▎      | 495/1500 [00:05<00:08, 125.28it/s, 127 steps of size 2.39e-02. acc. prob=0.78]
 # sample:  34%|███▍      | 511/1500 [00:05<00:07, 132.66it/s, 511 steps of size 1.77e-02. acc. prob=0.85]
 # sample:  35%|███▌      | 526/1500 [00:05<00:07, 135.84it/s, 511 steps of size 1.77e-02. acc. prob=0.85]
@@ -1492,9 +1498,9 @@ if __name__ == "__main__":
 # sample:  44%|████▍     | 667/1500 [00:06<00:05, 144.26it/s, 511 steps of size 1.77e-02. acc. prob=0.86]
 # sample:  45%|████▌     | 682/1500 [00:06<00:05, 144.61it/s, 255 steps of size 1.77e-02. acc. prob=0.86]
 # sample:  46%|████▋     | 697/1500 [00:06<00:07, 112.89it/s, 1023 steps of size 1.77e-02. acc. prob=0.86]
-# sample:  47%|████▋     | 710/1500 [00:07<00:07, 100.73it/s, 767 steps of size 1.77e-02. acc. prob=0.86] 
+# sample:  47%|████▋     | 710/1500 [00:07<00:07, 100.73it/s, 767 steps of size 1.77e-02. acc. prob=0.86]
 # sample:  48%|████▊     | 723/1500 [00:07<00:07, 106.29it/s, 255 steps of size 1.77e-02. acc. prob=0.86]
-# sample:  49%|████▉     | 735/1500 [00:07<00:08, 93.29it/s, 255 steps of size 1.77e-02. acc. prob=0.86] 
+# sample:  49%|████▉     | 735/1500 [00:07<00:08, 93.29it/s, 255 steps of size 1.77e-02. acc. prob=0.86]
 # sample:  50%|████▉     | 747/1500 [00:07<00:07, 98.49it/s, 255 steps of size 1.77e-02. acc. prob=0.86]
 # sample:  51%|█████     | 758/1500 [00:07<00:07, 96.67it/s, 511 steps of size 1.77e-02. acc. prob=0.87]
 # sample:  51%|█████▏    | 769/1500 [00:07<00:07, 99.37it/s, 255 steps of size 1.77e-02. acc. prob=0.86]
@@ -1504,30 +1510,30 @@ if __name__ == "__main__":
 # sample:  55%|█████▍    | 819/1500 [00:08<00:05, 114.98it/s, 255 steps of size 1.77e-02. acc. prob=0.87]
 # sample:  55%|█████▌    | 831/1500 [00:08<00:06, 106.52it/s, 767 steps of size 1.77e-02. acc. prob=0.87]
 # sample:  56%|█████▌    | 842/1500 [00:08<00:06, 103.11it/s, 255 steps of size 1.77e-02. acc. prob=0.86]
-# sample:  57%|█████▋    | 853/1500 [00:08<00:06, 92.51it/s, 511 steps of size 1.77e-02. acc. prob=0.86] 
+# sample:  57%|█████▋    | 853/1500 [00:08<00:06, 92.51it/s, 511 steps of size 1.77e-02. acc. prob=0.86]
 # sample:  58%|█████▊    | 865/1500 [00:08<00:06, 94.31it/s, 1023 steps of size 1.77e-02. acc. prob=0.86]
-# sample:  58%|█████▊    | 875/1500 [00:08<00:06, 89.65it/s, 511 steps of size 1.77e-02. acc. prob=0.86] 
+# sample:  58%|█████▊    | 875/1500 [00:08<00:06, 89.65it/s, 511 steps of size 1.77e-02. acc. prob=0.86]
 # sample:  59%|█████▉    | 888/1500 [00:08<00:06, 99.15it/s, 255 steps of size 1.77e-02. acc. prob=0.86]
 # sample:  60%|█████▉    | 899/1500 [00:09<00:05, 100.27it/s, 255 steps of size 1.77e-02. acc. prob=0.86]
-# sample:  61%|██████    | 910/1500 [00:09<00:06, 96.24it/s, 255 steps of size 1.77e-02. acc. prob=0.86] 
+# sample:  61%|██████    | 910/1500 [00:09<00:06, 96.24it/s, 255 steps of size 1.77e-02. acc. prob=0.86]
 # sample:  61%|██████▏   | 920/1500 [00:09<00:06, 90.17it/s, 1023 steps of size 1.77e-02. acc. prob=0.86]
-# sample:  62%|██████▏   | 932/1500 [00:09<00:05, 95.97it/s, 511 steps of size 1.77e-02. acc. prob=0.87] 
+# sample:  62%|██████▏   | 932/1500 [00:09<00:05, 95.97it/s, 511 steps of size 1.77e-02. acc. prob=0.87]
 # sample:  63%|██████▎   | 945/1500 [00:09<00:05, 102.53it/s, 511 steps of size 1.77e-02. acc. prob=0.87]
 # sample:  64%|██████▍   | 958/1500 [00:09<00:05, 106.98it/s, 511 steps of size 1.77e-02. acc. prob=0.86]
 # sample:  65%|██████▍   | 969/1500 [00:09<00:05, 103.57it/s, 511 steps of size 1.77e-02. acc. prob=0.86]
 # sample:  65%|██████▌   | 980/1500 [00:09<00:04, 104.56it/s, 511 steps of size 1.77e-02. acc. prob=0.87]
 # sample:  66%|██████▌   | 991/1500 [00:09<00:04, 103.04it/s, 255 steps of size 1.77e-02. acc. prob=0.87]
 # sample:  67%|██████▋   | 1004/1500 [00:10<00:04, 109.64it/s, 255 steps of size 1.77e-02. acc. prob=0.87]
-# sample:  68%|██████▊   | 1016/1500 [00:10<00:04, 97.27it/s, 255 steps of size 1.77e-02. acc. prob=0.86] 
+# sample:  68%|██████▊   | 1016/1500 [00:10<00:04, 97.27it/s, 255 steps of size 1.77e-02. acc. prob=0.86]
 # sample:  68%|██████▊   | 1027/1500 [00:10<00:04, 96.75it/s, 255 steps of size 1.77e-02. acc. prob=0.86]
 # sample:  69%|██████▉   | 1040/1500 [00:10<00:04, 101.46it/s, 767 steps of size 1.77e-02. acc. prob=0.86]
 # sample:  70%|███████   | 1051/1500 [00:10<00:04, 102.51it/s, 255 steps of size 1.77e-02. acc. prob=0.86]
-# sample:  71%|███████   | 1062/1500 [00:10<00:04, 97.35it/s, 255 steps of size 1.77e-02. acc. prob=0.86] 
+# sample:  71%|███████   | 1062/1500 [00:10<00:04, 97.35it/s, 255 steps of size 1.77e-02. acc. prob=0.86]
 # sample:  72%|███████▏  | 1075/1500 [00:10<00:04, 103.23it/s, 511 steps of size 1.77e-02. acc. prob=0.86]
 # sample:  72%|███████▏  | 1086/1500 [00:10<00:04, 100.11it/s, 511 steps of size 1.77e-02. acc. prob=0.86]
 # sample:  73%|███████▎  | 1097/1500 [00:10<00:03, 101.80it/s, 255 steps of size 1.77e-02. acc. prob=0.86]
 # sample:  74%|███████▍  | 1108/1500 [00:11<00:03, 102.40it/s, 511 steps of size 1.77e-02. acc. prob=0.87]
-# sample:  75%|███████▍  | 1119/1500 [00:11<00:04, 93.40it/s, 255 steps of size 1.77e-02. acc. prob=0.87] 
+# sample:  75%|███████▍  | 1119/1500 [00:11<00:04, 93.40it/s, 255 steps of size 1.77e-02. acc. prob=0.87]
 # sample:  75%|███████▌  | 1130/1500 [00:11<00:03, 97.04it/s, 511 steps of size 1.77e-02. acc. prob=0.87]
 # sample:  76%|███████▌  | 1140/1500 [00:11<00:03, 90.09it/s, 511 steps of size 1.77e-02. acc. prob=0.87]
 # sample:  77%|███████▋  | 1151/1500 [00:11<00:03, 95.11it/s, 255 steps of size 1.77e-02. acc. prob=0.86]
@@ -1535,29 +1541,29 @@ if __name__ == "__main__":
 # sample:  78%|███████▊  | 1177/1500 [00:11<00:02, 109.97it/s, 255 steps of size 1.77e-02. acc. prob=0.87]
 # sample:  79%|███████▉  | 1189/1500 [00:11<00:02, 106.14it/s, 255 steps of size 1.77e-02. acc. prob=0.86]
 # sample:  80%|████████  | 1202/1500 [00:11<00:02, 108.22it/s, 767 steps of size 1.77e-02. acc. prob=0.86]
-# sample:  81%|████████  | 1213/1500 [00:12<00:02, 98.80it/s, 511 steps of size 1.77e-02. acc. prob=0.86] 
+# sample:  81%|████████  | 1213/1500 [00:12<00:02, 98.80it/s, 511 steps of size 1.77e-02. acc. prob=0.86]
 # sample:  82%|████████▏ | 1227/1500 [00:12<00:02, 108.33it/s, 255 steps of size 1.77e-02. acc. prob=0.86]
-# sample:  83%|████████▎ | 1239/1500 [00:12<00:02, 91.92it/s, 255 steps of size 1.77e-02. acc. prob=0.86] 
+# sample:  83%|████████▎ | 1239/1500 [00:12<00:02, 91.92it/s, 255 steps of size 1.77e-02. acc. prob=0.86]
 # sample:  83%|████████▎ | 1250/1500 [00:12<00:02, 93.76it/s, 511 steps of size 1.77e-02. acc. prob=0.86]
 # sample:  84%|████████▍ | 1260/1500 [00:12<00:02, 95.00it/s, 255 steps of size 1.77e-02. acc. prob=0.86]
 # sample:  85%|████████▍ | 1274/1500 [00:12<00:02, 104.47it/s, 511 steps of size 1.77e-02. acc. prob=0.86]
 # sample:  86%|████████▌ | 1285/1500 [00:12<00:02, 104.21it/s, 255 steps of size 1.77e-02. acc. prob=0.86]
 # sample:  86%|████████▋ | 1296/1500 [00:12<00:02, 101.17it/s, 511 steps of size 1.77e-02. acc. prob=0.86]
-# sample:  87%|████████▋ | 1307/1500 [00:13<00:01, 97.55it/s, 255 steps of size 1.77e-02. acc. prob=0.86] 
+# sample:  87%|████████▋ | 1307/1500 [00:13<00:01, 97.55it/s, 255 steps of size 1.77e-02. acc. prob=0.86]
 # sample:  88%|████████▊ | 1317/1500 [00:13<00:01, 94.08it/s, 255 steps of size 1.77e-02. acc. prob=0.86]
 # sample:  89%|████████▉ | 1332/1500 [00:13<00:01, 108.15it/s, 255 steps of size 1.77e-02. acc. prob=0.86]
 # sample:  90%|████████▉ | 1345/1500 [00:13<00:01, 113.18it/s, 255 steps of size 1.77e-02. acc. prob=0.86]
 # sample:  90%|█████████ | 1357/1500 [00:13<00:01, 110.44it/s, 511 steps of size 1.77e-02. acc. prob=0.86]
 # sample:  91%|█████████▏| 1369/1500 [00:13<00:01, 105.94it/s, 255 steps of size 1.77e-02. acc. prob=0.86]
 # sample:  92%|█████████▏| 1382/1500 [00:13<00:01, 109.60it/s, 511 steps of size 1.77e-02. acc. prob=0.86]
-# sample:  93%|█████████▎| 1394/1500 [00:13<00:01, 97.79it/s, 511 steps of size 1.77e-02. acc. prob=0.86] 
+# sample:  93%|█████████▎| 1394/1500 [00:13<00:01, 97.79it/s, 511 steps of size 1.77e-02. acc. prob=0.86]
 # sample:  94%|█████████▎| 1405/1500 [00:14<00:00, 95.71it/s, 255 steps of size 1.77e-02. acc. prob=0.86]
 # sample:  94%|█████████▍| 1416/1500 [00:14<00:00, 96.81it/s, 511 steps of size 1.77e-02. acc. prob=0.86]
 # sample:  95%|█████████▌| 1430/1500 [00:14<00:00, 107.26it/s, 255 steps of size 1.77e-02. acc. prob=0.87]
 # sample:  96%|█████████▋| 1444/1500 [00:14<00:00, 115.76it/s, 511 steps of size 1.77e-02. acc. prob=0.87]
 # sample:  97%|█████████▋| 1456/1500 [00:14<00:00, 105.85it/s, 511 steps of size 1.77e-02. acc. prob=0.87]
 # sample:  98%|█████████▊| 1467/1500 [00:14<00:00, 100.78it/s, 511 steps of size 1.77e-02. acc. prob=0.87]
-# sample:  99%|█████████▊| 1478/1500 [00:14<00:00, 96.26it/s, 511 steps of size 1.77e-02. acc. prob=0.87] 
+# sample:  99%|█████████▊| 1478/1500 [00:14<00:00, 96.26it/s, 511 steps of size 1.77e-02. acc. prob=0.87]
 # sample:  99%|█████████▉| 1491/1500 [00:14<00:00, 102.35it/s, 511 steps of size 1.77e-02. acc. prob=0.87]
 # sample: 100%|██████████| 1500/1500 [00:14<00:00, 100.28it/s, 255 steps of size 1.77e-02. acc. prob=0.87]
 # 2025-04-07 11:19:50.138 Python[77898:10384080] +[CATransaction synchronize] called within transaction

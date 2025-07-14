@@ -1,15 +1,18 @@
 import sys
-sys.path.append("../../.")
 
-from lanl_scientific_agent.agents import ExecutionAgent, PlanningAgent, HypothesizerAgent, ResearchAgent
-from lanl_scientific_agent.agents import HypothesizerState
-from langchain_core.messages      import HumanMessage
-from langchain_openai             import ChatOpenAI
-from langchain_ollama.chat_models import ChatOllama
+from langchain_community.chat_models import ChatLiteLLM
+from langchain_core.messages import HumanMessage
 
-from lanl_scientific_agent.prompt_library.planning_prompts import detailed_planner_prompt
+from oppenai.agents import (
+    ExecutionAgent,
+    HypothesizerAgent,
+    HypothesizerState,
+    PlanningAgent,
+    ResearchAgent,
+)
+from oppenai.prompt_library.planning_prompts import detailed_planner_prompt
 
-problem_definition = '''
+problem_definition = """
 Search for and find a paper on Determinantal Point Processes in the statistics literature and identify a synthetic data
 example from that paper.
 
@@ -17,59 +20,83 @@ Write a python file to:
   - Replicate the example
   - Visualize the results
   - Summarize how your example compares to the published paper.
-'''
+"""
 
-def main():
+
+def main(mode: str):
     """Run a simple example of the scientific agent."""
     try:
-        model = ChatOpenAI(
-            model       = "o3-mini",
-            max_tokens  = 10000,
-            timeout     = None,
-            max_retries = 2)
-        # model = ChatOllama(
-        #     model       = "llama3.1:8b",
-        #     max_tokens  = 4000,
-        #     timeout     = None,
-        #     max_retries = 2
-        # )
-        
-        print(f"\nSolving problem: {problem_definition}\n")
-        
-        # Initialize the agent
-        planner      = PlanningAgent(llm      = model)
-        executor     = ExecutionAgent(llm     = model)
+        model = ChatLiteLLM(
+            model="openai/o3-mini"
+            if mode == "prod"
+            else "ollama_chat/llama3.1:8b",
+            max_tokens=10000 if mode == "prod" else 4000,
+            max_retries=2,
+        )
 
-        inputs          = {"messages": [HumanMessage(content=problem_definition)]}
+        print(f"\nSolving problem: {problem_definition}\n")
+
+        # Initialize the agent
+        planner = PlanningAgent(llm=model)
+        executor = ExecutionAgent(llm=model)
+
+        inputs = {"messages": [HumanMessage(content=problem_definition)]}
 
         # Solve the problem
-        planning_output = planner.action.invoke(inputs, {"recursion_limit": 999999})
+        planning_output = planner.action.invoke(
+            inputs, {"recursion_limit": 999999}
+        )
         print(planning_output["messages"][-1].content)
-        last_step_string   = "Beginning to break down step 1 of the plan. "
+        last_step_string = "Beginning to break down step 1 of the plan. "
         detail_plan_string = "Flesh out the details of this step and generate substeps to handle the details."
         for x in planning_output["plan_steps"]:
-            detail_planner                = PlanningAgent(llm = model)
-            plan_string                   = str(x)
+            detail_planner = PlanningAgent(llm=model)
+            plan_string = str(x)
             detail_planner.planner_prompt = detailed_planner_prompt
-            detail_output    = detail_planner.action.invoke({"messages": [HumanMessage(content=last_step_string + plan_string + detail_plan_string)]},{"recursion_limit": 999999})
-            last_substep_string   = "Beginning to break down of the plan. "
+            detail_output = detail_planner.action.invoke(
+                {
+                    "messages": [
+                        HumanMessage(
+                            content=last_step_string
+                            + plan_string
+                            + detail_plan_string
+                        )
+                    ]
+                },
+                {"recursion_limit": 999999},
+            )
+            last_substep_string = "Beginning to break down of the plan. "
             for y in detail_output["plan_steps"]:
-                execute_string      = "Execute this step and report results for the executor of the next step. Do not use placeholders but fully carry out each step."
-                final_results       = executor.action.invoke({"messages": [HumanMessage(content=last_substep_string + str(y) + execute_string)], "workspace":"workspace_DPP"},{"recursion_limit": 999999})
+                execute_string = "Execute this step and report results for the executor of the next step. Do not use placeholders but fully carry out each step."
+                final_results = executor.action.invoke(
+                    {
+                        "messages": [
+                            HumanMessage(
+                                content=last_substep_string
+                                + str(y)
+                                + execute_string
+                            )
+                        ],
+                        "workspace": "workspace_DPP",
+                    },
+                    {"recursion_limit": 999999},
+                )
                 last_substep_string = final_results["messages"][-1].content
                 print(last_substep_string)
             last_step_string = last_substep_string
-                
+
         return final_results["messages"][-1].content
-    
+
     except Exception as e:
         print(f"Error in example: {str(e)}")
         import traceback
+
         traceback.print_exc()
         return {"error": str(e)}
 
+
 if __name__ == "__main__":
-    main()
+    main(sys.argv[-1])
 
 
 # execute_string   = "Flesh out the details of this step and report results for the executor of the next step. Do not use placeholders but fully carry out each step."
