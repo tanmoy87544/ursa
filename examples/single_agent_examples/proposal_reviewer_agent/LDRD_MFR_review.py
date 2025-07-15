@@ -1,32 +1,33 @@
-import sys
-import os # for envvars from the user for local LLM
+import os  # for envvars from the user for local LLM
+
+import httpx
+import litellm
+from langchain_litellm import ChatLiteLLM
 
 # rich console stuff for beautification
 from rich.console import Console
 from rich.panel import Panel
+from rich.progress import BarColumn, Progress, SpinnerColumn, TextColumn
 from rich.table import Table
 from rich.text import Text
-from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn
 
-from langchain_community.chat_models import ChatLiteLLM
 from oppenai.agents import ProposalReviewerAgent
-
-import litellm, httpx
 
 # necessary for corporate firewalls / proxies
 CA_BUNDLE = os.getenv("CA_BUNDLE")
 litellm.client_session = httpx.Client(verify=CA_BUNDLE)
 
-proposal_dir="../../../../LDRD_Review_MFR_2025/CUI_LDRD_FY25_MFR_PHASE1_INPUT/proposal_PDFs/non-CUI_cover_sheets_and_proposals_70proposals"
+proposal_dir = "../../../../LDRD_Review_MFR_2025/CUI_LDRD_FY25_MFR_PHASE1_INPUT/proposal_PDFs/non-CUI_cover_sheets_and_proposals_70proposals"
 # proposal_dir="../../../../LDRD_Review_MFR_2025/CUI_LDRD_FY25_MFR_PHASE1_INPUT/proposal_PDFs/nate_testing"
 
-console = Console()          # global console object
+console = Console()  # global console object
+
 
 def print_model_info(model):
     def mask_key(key: str, visible: int = 8) -> str:
         """Return the first `visible` chars of `key`, then an ellipsis."""
         return key[:visible] + ". . ." if key else ""
-    
+
     grid = Table.grid(padding=(0, 2))
     grid.add_column(justify="right", style="bold cyan")
     grid.add_column()
@@ -48,16 +49,18 @@ def main():
     # private info offsite
     model = ChatLiteLLM(
         # this looks really dumb, I realize that, with openai/sambanova/<MODEL> but:
-        # When LiteLLM sees a model string of the form provider/model-name, it treats 
+        # When LiteLLM sees a model string of the form provider/model-name, it treats
         # the bit before the first “/” as the provider.
-        # LiteLLM’s own docs confirm the prefix is required when you’re talking 
+        # LiteLLM’s own docs confirm the prefix is required when you’re talking
         # to SambaNova from a plain OpenAI-style client
         # https://docs.litellm.ai/docs/providers/sambanova
-        # - but those docs assume you use the SambaNova provider directly, not a self-hosted 
+        # - but those docs assume you use the SambaNova provider directly, not a self-hosted
         # OpenAI-compatible endpoint that does its own ACL.
-        model="openai/sambanova/Meta-Llama-3.3-70B-Instruct", # or any model you deem appropriate for this
-        api_base=os.getenv("SN_LLM_URL"), # the SambaNova endpoint / local for us
-        openai_api_key=os.getenv("SN_LLM_API_KEY"), # your API key
+        model="openai/sambanova/Meta-Llama-3.3-70B-Instruct",  # or any model you deem appropriate for this
+        api_base=os.getenv(
+            "SN_LLM_URL"
+        ),  # the SambaNova endpoint / local for us
+        openai_api_key=os.getenv("SN_LLM_API_KEY"),  # your API key
         max_tokens=50_000,
         max_retries=2,
         cache=False,
@@ -75,7 +78,7 @@ def main():
         proposal_call_pdf_filename="./FY25_MFR_Problem Statements_FINAL_20240531.pdf",
         review_criteria_json_filename="./proposal_review_criteria.json",
         trl_levels_json_filename="./TRL_levels.json",
-        submitted_proposals_dir=proposal_dir
+        submitted_proposals_dir=proposal_dir,
     )
     print(result)
 
