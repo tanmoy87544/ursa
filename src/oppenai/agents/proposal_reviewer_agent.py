@@ -20,6 +20,7 @@ from langchain.output_parsers import (
     PydanticOutputParser,
     OutputFixingParser,
 )
+import numpy as np
 
 from openai import OpenAI
 
@@ -35,11 +36,12 @@ from pydantic import confloat
 import json # for prepping for LLM
 
 from typing import Callable
+import re
 
 ######################################
 # BEGIN: RICH CONSOLE STUFF
 ######################################
-from rich.console import Console
+from rich.console import Console, Group
 from rich.markdown import Markdown
 from rich.theme   import Theme
 from rich.rule    import Rule
@@ -222,6 +224,17 @@ def _show_timings(state: ReviewState) -> ReviewState:
 # END: Timing stuff
 ################################
 
+def slugify_filename(part: str, max_len: int = 60) -> str:
+    """
+    Replace anything not alnum, dot, dash, or underscore with a dash.
+    Collapse consecutive dashes and clip to `max_len`.
+    """
+    # e.g. "openai/anthropic.claude-3-7-sonnet-20250219-v1:0"
+    slug = re.sub(r"[^0-9A-Za-z._-]+", "-", part)   # → "openai-anthropic.claude-3-7-sonnet-20250219-v1-0"
+    slug = re.sub(r"-{2,}", "-", slug).strip("-")   # no double dashes or leading/trailing
+    return slug[:max_len]
+
+
 
 # === Main Agent ===
 class ProposalReviewerAgent(BaseAgent):
@@ -254,7 +267,7 @@ class ProposalReviewerAgent(BaseAgent):
                 "system",
                 (
                     # Nathan / June, 2025
-                    # for the LDRD MFR 2025 call, there are some specific things in the CFP 
+                    # for the LDRD MFR 2025 and 2026 call, there are some specific things in the CFP 
                     # and some specific things missing from what I'd call a normal CFP, for instance
                     # there's nothing about who are acceptable people to submit, funding level, etc
                     # so this prompt is pretty specific to that task.
@@ -352,20 +365,21 @@ class ProposalReviewerAgent(BaseAgent):
 
         manifests: List[ProposalManifest] = []
         for pdf_path in sorted(pdf_dir.glob("*.pdf"), key=lambda p: p.name.lower()):
+            print(f"Reading PDF {pdf_path} . . .")
             loader = PyPDFLoader(pdf_path)
             pages = loader.load()
             full_text = "\n".join(p.page_content for p in pages)
 
             manifests.append(
                 {
-                    "path": str(pdf_path),
-                    "filename": pdf_path.name,
-                    "raw_text": full_text,
+                "path": str(pdf_path),
+                "filename": pdf_path.name,
+                "raw_text": full_text,
                 }
-            )
-        
+             )
+
         # Build a simple Markdown bullet list of filenames
-        filenames_md = "\n".join(f"- `{m['filename']}`" for m in manifests)
+        filenames_md = "\n".join(f"- {m['filename']}" for m in manifests)
         md_renderable = Markdown(filenames_md, hyperlinks=False)
 
         panel = Panel(
@@ -604,7 +618,8 @@ class ProposalReviewerAgent(BaseAgent):
         def _read_trl_scale(path_str: str) -> dict[int, str]:
             with open(path_str, "r", encoding="utf-8") as f:
                 data = json.load(f)
-            return {int(k): v for k, v in data.items()}        
+            return {int(k): v for k, v in data.items()}
+        print(f"TRLs Level JSON Filename: {trl_levels_json_filename}")
         trl_levels_json = _read_trl_scale(trl_levels_json_filename)
 
         for idx, manifest in enumerate(manifests, start=1):
@@ -716,23 +731,40 @@ class ProposalReviewerAgent(BaseAgent):
                     "system",
                     (
                         "<!-- {unique_query_id} --> "
-                        "You are a senior proposal reviewer. Use the CFP and rubric provided to score "
-                        "each category and give 2-3 paragraph rationales.  Draw connections between "
-                        "the proposal and the CFP and leverage the rubric.  "
-                        "Please be critical - harsh when necessary, but not needlessly cruel.  "
-                        "Please be *specific*, we are not interested in general vague responses - "
-                        "we need reviews that are actionable and critical for the authors.  "
-                        "Do not simply review everything at the highest level unless it really "
-                        "warrants it.  Remember to drive your response to each category by the "
-                        "'guiding_question'.  Include verbiage related to the rating score labels "
-                        "in your review.  For instance, 'Outstanding' for 5.0, 'Fair' for 2.0, etc.  "
-                        "Remember a review needs to be CRITICAL!  Please pick apart the proposal "
-                        "findings strengths and weaknesses in each of the categories.  "
-                        "Be sure to include references to the CFP's R&D priorities!  We need to "
-                        "see connections to this-or-that priority, or it could be better aligned "
-                        "to some other priority from the CFP.  "
-                        "Reply ONLY with a JSON object that matches the schema; "
-                        "no markdown or extraneous text."
+                        """
+You are a senior proposal reviewer.
+Use the CFP and rubric provided to score each category and give 2-3 paragraph rationales.  Draw
+connections between the proposal and the CFP and leverage the rubric.  Please use the full scale from 1.0
+to 5.0 (e.g. 4.2, 3.8, etc.).
+1. Start each category at 3.0 = Good. Adjust up/down strictly per rubric.
+2. Absolute thresholds  
+   * 4 = Excellent: all criteria met; only minor, easily correctable weaknesses.  
+   * 5 = Outstanding: exceeds criteria; no substantive weaknesses.  
+3. If you award 4, cite >= 2 specific proposal passages supporting every 4-level descriptor.  
+   If you award 5, cite >= 3 passages and explain why no major weaknesses remain.  
+4. Provide for every category:  
+   * Score (1.0 - 5.0) and rating label (Fair, Outstanding, ...)  
+   * 2-3 paragraph rationale  
+   * At least one concrete weakness and one actionable improvement  
+5. **Self-check before finalizing**: ensure full scale use and evidence adequacy.  
+Be critical yet professional; avoid vague language.
+Reply ONLY with a JSON object that matches the schema; no markdown or extraneous text.
+                        """
+                        # "You are a senior proposal reviewer. Use the CFP and rubric provided to score "
+                        # "each category and give 2-3 paragraph rationales.  Draw connections between "
+                        # "the proposal and the CFP and leverage the rubric.  "
+                        # "Please be critical - harsh when necessary, but not needlessly cruel.  "
+                        # "Please be *specific*, we are not interested in general vague responses - "
+                        # "we need reviews that are actionable and critical for the authors.  "
+                        # "Do not simply review everything at the highest level unless it really "
+                        # "warrants it.  Remember to drive your response to each category by the "
+                        # "'guiding_question'.  Include verbiage related to the rating score labels "
+                        # "in your review.  For instance, 'Outstanding' for 5.0, 'Fair' for 2.0, etc.  "
+                        # "Remember a review needs to be CRITICAL!  Please pick apart the proposal "
+                        # "findings strengths and weaknesses in each of the categories.  "
+                        # "Be sure to include references to the CFP's R&D priorities!  We need to "
+                        # "see connections to this-or-that priority, or it could be better aligned "
+                        # "to some other priority from the CFP.  "
                     ),
                 ),
                 (
@@ -919,36 +951,99 @@ class ProposalReviewerAgent(BaseAgent):
 
     @timed("export_reviews_to_csv")
     def _export_reviews_to_csv(self, state: ReviewState) -> ReviewState:
+        """
+        Write `proposal_manifests` to a CSV whose filename encodes the
+        timestamp plus the model’s temperature / top-p / top-k settings,
+        e.g.  proposals_review_2025-07-07_17-45_T0.2_P0.95_K40.csv
+        """
         manifests = state["proposal_manifests"]
 
-        # Build DataFrame from ALL keys
+        # ---------- build DataFrame ----------
         df = pd.DataFrame(manifests)
-
-        # we don't want these fields
-        for col in ("raw_text","path"):
+        for col in ("raw_text", "path"):
             if col in df.columns:
                 df.drop(columns=[col], inplace=True)
 
-        # Flatten topic_areas list → comma-separated string
         if "topic_areas" in df.columns:
             df["topic_areas"] = df["topic_areas"].apply(
                 lambda lst: ", ".join(lst) if isinstance(lst, list) else lst
             )
 
-        # Timestamped filename
-        ts = datetime.now().strftime("%Y-%m-%d_%H-%M")
-        out_path = Path(f"proposals_review_{ts}.csv").resolve()
-        df.to_csv(out_path, index=False)
+        # now we need to do some basic math based on the rubric of weightings.
+        # ---------- basic math based on rubric ----------
+        rubric = state["rubric"]                      # make sure this is already in state
 
-        console.print(
-            Panel(
-                f"[green]✓ CSV exported to {out_path}",
-                border_style="cyan",
-                box=box.ROUNDED,
-            )
+        # Build a dict of {normalized_weight: column_name}
+        weight_map = {}
+        for cat in rubric["categories"]:
+            col = f"{cat['name'].lower().replace(' ', '_')}_score"  # e.g. "Technical Vitality" → "technical_vitality_score"
+            weight_map[col] = cat["weight_percent"] / 100.0         # convert to 0-1
+
+        # Sanity-check: weights sum to ~1 and every weighted column exists
+        missing = [c for c in weight_map if c not in df.columns]
+        if missing:
+            raise KeyError(f"Missing expected score columns: {missing}")
+        total_wt = sum(weight_map.values())
+        if not np.isclose(total_wt, 1.0):
+            raise ValueError(f"Rubric weights sum to {total_wt:.2f}, expected 1.00")
+
+        # Compute weighted subtotal for each row
+        def _weighted_sum(row):
+            return sum(row[col] * wt for col, wt in weight_map.items())
+
+        df["overall_score"] = df.apply(_weighted_sum, axis=1)
+
+        # ---------- filename ----------
+        ts = datetime.now().strftime("%Y-%m-%d_%H-%M")
+
+        model_name_raw = getattr(
+            self.llm, "model", getattr(self.llm, "model_name", "unknown-model")
         )
 
-        # keep path in state if later nodes need it
+        # Throw away any provider/endpoint prefix
+        # "openai/anthropic.claude-3-7-sonnet-20250219-v1:0" → "anthropic.claude-3-7-sonnet-20250219-v1:0"
+        model_core = model_name_raw.split("/")[-1]            # or Path(model_name_raw).name
+
+        # Make it filesystem-safe
+        model_name = slugify_filename(model_core)
+
+        temp  = getattr(self.llm, "temperature", None)
+        top_p = getattr(self.llm, "top_p",      None)
+        top_k = getattr(self.llm, "top_k",      None)
+
+        def fmt(val, prefix: str) -> str:
+            """
+            0.2  -> '_T0.2'
+            0.95 -> '_P0.95'
+            40   -> '_K40'
+            None -> ''   (skip)
+            """
+            if val is None:
+                return ""
+            if isinstance(val, float):
+                # keep up to three significant digits, strip trailing zeros
+                txt = f"{val:.3g}".rstrip("0").rstrip(".")
+            else:
+                txt = str(val)
+            return f"_{prefix}{txt}"
+
+        name = (
+            "proposals_review_"
+            f"{ts}"
+            f"_{model_name}"
+            f"{fmt(temp,  'T')}"
+            f"{fmt(top_p, 'P')}"
+            f"{fmt(top_k, 'K')}.csv"
+        )
+        out_path = Path(name).resolve()
+        print(f"Saving to file: {out_path}")
+
+        # ---------- write & log ----------
+        df.to_csv(out_path, index=False)
+        console.print(
+            Panel(f"[green]✓ CSV exported to {out_path}",
+                border_style="cyan", box=box.ROUNDED)
+        )
         return {**state, "reviews_csv": str(out_path)}
     
     @timed("finish_up")
@@ -984,6 +1079,7 @@ class ProposalReviewerAgent(BaseAgent):
 
         # step 1: read the proposal call PDF into raw text
         builder.add_edge(START, "read_proposal_call")
+        # builder.add_edge(START, "collect_proposal_pdfs")
         # step 2: after we have the proposal call raw text, ask the LLM to summarize it
         builder.add_edge("read_proposal_call", "summarize_proposal_call")
         # step 3: let's work on the proposals - first, we need to collect all the proposals
@@ -1012,6 +1108,7 @@ class ProposalReviewerAgent(BaseAgent):
             recursion_limit=100) -> str:
         # we need to stuff this input information into our state graph so nodes
         # can slurp it up
+
         result = self.graph.invoke(
             {
                 "proposal_call_pdf_filename": proposal_call_pdf_filename,
