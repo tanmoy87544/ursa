@@ -7,6 +7,8 @@ from io import BytesIO
 import base64
 from urllib.parse import quote
 from typing_extensions import TypedDict, List
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from tqdm import tqdm
 
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_core.output_parsers import StrOutputParser
@@ -140,7 +142,9 @@ class ArxivAgent(BaseAgent):
         papers = []
         for i,pdf_filename in enumerate(os.listdir(self.database_path)):
             full_text = ""
-            if self.summarize:
+            arxiv_id = pdf_filename.split('.pdf')[0]
+            vec_save_loc =  self.vectorstore_path + '/' + arxiv_id
+            if self.summarize and not os.path.exists(os.path.join(vec_save_loc, "index.faiss")):
                 try:
                     loader = PyPDFLoader( os.path.join(self.database_path, pdf_filename) )
                     pages = loader.load()
@@ -154,7 +158,7 @@ class ArxivAgent(BaseAgent):
                     full_text = f"Error loading paper: {e}"
     
             papers.append({
-                "arxiv_id": pdf_filename.split('.pdf')[0],
+                "arxiv_id": arxiv_id,
                 "full_text": full_text,
             })
 
@@ -170,21 +174,17 @@ class ArxivAgent(BaseAgent):
         embeddings = OpenAIEmbeddings()
     
         if os.path.exists(os.path.join(save_loc, "index.faiss")):
-            print(f"Loading cached vectorstore for {arxiv_id}")
             vectorstore = FAISS.load_local(save_loc, embeddings,allow_dangerous_deserialization=True)
         else:
-            print(f"Building new vectorstore for {arxiv_id}")
             splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
             docs = splitter.create_documents([paper_text])
             vectorstore = FAISS.from_documents(docs, embeddings)
             vectorstore.save_local(save_loc)
     
         return vectorstore.as_retriever(search_kwargs={"k": 5})
-            
+         
 
     def _summarize_node(self, state: PaperState) -> PaperState:
-        
-        summaries = []
         
         prompt = ChatPromptTemplate.from_template("""
         You are a scientific assistant responsible for summarizing extracts from research papers, in the context of the following task: {context}
@@ -195,30 +195,39 @@ class ArxivAgent(BaseAgent):
         """)
         
         chain = prompt | self.llm | StrOutputParser()
+
+        summaries = [None] * len(state["papers"])
     
-        for paper in state["papers"]:
+        def process_paper(i, paper):
             arxiv_id = paper["arxiv_id"]
             summary_filename = os.path.join(self.summaries_path, f"{arxiv_id}_summary.txt")
             
             if os.path.exists(summary_filename):
                 with open(summary_filename, 'r') as f:
-                    summaries.append(f.read())
+                    return i, f.read()
 
-            else:
-                try:
-                    retriever = self._get_or_build_vectorstore(paper["full_text"], arxiv_id)
-                    relevant_docs = retriever.invoke(state["context"])
-                    retrieved_content = "\n\n".join([doc.page_content for doc in relevant_docs])
-                    summary = chain.invoke({"retrieved_content": retrieved_content, "context": state["context"]})
-                    
-                except Exception as e:
-                    summary = f"Error summarizing paper: {e}"
-                    
-                summaries.append(summary)
+            try:
+                retriever = self._get_or_build_vectorstore(paper["full_text"], arxiv_id)
+                relevant_docs = retriever.invoke(state["context"])
+                retrieved_content = "\n\n".join([doc.page_content for doc in relevant_docs])
+                summary = chain.invoke({"retrieved_content": retrieved_content, "context": state["context"]})
                 
-                with open(summary_filename, "w") as f:
-                    f.write(summary)
-    
+            except Exception as e:
+                summary = f"Error summarizing paper: {e}"
+                            
+            with open(summary_filename, "w") as f:
+                f.write(summary)
+
+            return i, summary
+            
+
+        with ThreadPoolExecutor(max_workers=min(32, len(state["papers"]))) as executor:
+            futures = [executor.submit(process_paper, i, paper) for i, paper in enumerate(state["papers"])]
+
+            for future in tqdm(as_completed(futures), total=len(futures), desc="Summarizing Papers"):
+                i, result = future.result()
+                summaries[i] = result
+
         return {**state, "summaries": summaries}
 
 
