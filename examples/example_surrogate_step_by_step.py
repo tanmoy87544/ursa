@@ -1,7 +1,7 @@
 from langchain_community.chat_models import ChatLiteLLM
 from langchain_core.messages import HumanMessage
 
-from oppenai.agents import ExecutionAgent, PlanningAgent
+from ursa.agents import ExecutionAgent, PlanningAgent
 
 problem = """
 Look for a file called finished_cases.csv in your workspace. If you find it, it should contain a column named something like "log Yield".

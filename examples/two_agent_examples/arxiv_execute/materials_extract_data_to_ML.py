@@ -3,8 +3,8 @@ import sys
 from langchain_community.chat_models import ChatLiteLLM
 from langchain_core.messages import HumanMessage
 from langchain_community.callbacks import get_openai_callback
-from oppenai.agents import ArxivAgent
-from oppenai.agents import ExecutionAgent
+from ursa.agents import ArxivAgent
+from ursa.agents import ExecutionAgent
 
 def main():
     model = ChatLiteLLM(

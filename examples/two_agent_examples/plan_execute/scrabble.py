@@ -6,7 +6,7 @@ from langchain_community.chat_models import ChatLiteLLM
 from langgraph.checkpoint.sqlite import SqliteSaver
 from langchain_core.messages import HumanMessage
 
-from oppenai.agents import ExecutionAgent, PlanningAgent
+from ursa.agents import ExecutionAgent, PlanningAgent
 
 # rich console stuff for beautification
 from rich.console import Console

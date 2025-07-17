@@ -4,11 +4,11 @@ from langchain_community.chat_models import ChatLiteLLM
 from langchain_core.messages import HumanMessage
 from pypdf import PdfReader
 
-from oppenai.agents import (
+from ursa.agents import (
     ExecutionAgent,
     PlanningAgent,
 )
-from oppenai.prompt_library.planning_prompts import (
+from ursa.prompt_library.planning_prompts import (
     detailed_planner_prompt,
 )
 

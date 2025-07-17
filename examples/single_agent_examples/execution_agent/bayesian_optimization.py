@@ -3,7 +3,7 @@ import sys
 from langchain_community.chat_models import ChatLiteLLM
 from langchain_core.messages import HumanMessage
 
-from oppenai.agents import ExecutionAgent
+from ursa.agents import ExecutionAgent
 
 
 ### Run a simple example of an Execution Agent.

@@ -9,7 +9,7 @@ from rich.text import Text
 from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn
 
 from langchain_community.chat_models import ChatLiteLLM
-from oppenai.agents import ProposalReviewerAgent
+from ursa.agents import ProposalReviewerAgent
 
 import litellm, httpx
 

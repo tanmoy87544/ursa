@@ -1,6 +1,6 @@
 import sys
 
-from oppenai.agents                              import ArxivAgent
+from ursa.agents                              import ArxivAgent
 from langchain_openai                            import ChatOpenAI
 
 def main():

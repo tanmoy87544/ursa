@@ -2,7 +2,7 @@ import sys
 import time
 sys.path.append("../../.")
 
-from oppenai.agents                              import ArxivAgent
+from ursa.agents                              import ArxivAgent
 from langchain_openai                            import ChatOpenAI
 from langchain_community.callbacks.openai_info   import OpenAICallbackHandler
 

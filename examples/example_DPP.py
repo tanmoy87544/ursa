@@ -3,14 +3,14 @@ import sys
 from langchain_community.chat_models import ChatLiteLLM
 from langchain_core.messages import HumanMessage
 
-from oppenai.agents import (
+from ursa.agents import (
     ExecutionAgent,
     HypothesizerAgent,
     HypothesizerState,
     PlanningAgent,
     ResearchAgent,
 )
-from oppenai.prompt_library.planning_prompts import detailed_planner_prompt
+from ursa.prompt_library.planning_prompts import detailed_planner_prompt
 
 problem_definition = """
 Search for and find a paper on Determinantal Point Processes in the statistics literature and identify a synthetic data

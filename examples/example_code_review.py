@@ -3,7 +3,7 @@ import sys
 
 from langchain_community.chat_models import ChatLiteLLM
 
-from oppenai.agents import CodeReviewAgent
+from ursa.agents import CodeReviewAgent
 
 problem_definition = """
 Look for a file called finished_cases.csv in your workspace. If you find it, it should contain a column named something like "logYield".

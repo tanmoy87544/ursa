@@ -1,7 +1,7 @@
 from langchain_community.chat_models import ChatLiteLLM
 from langchain_core.messages import HumanMessage
 
-from oppenai.agents import ExecutionAgent, PlanningAgent
+from ursa.agents import ExecutionAgent, PlanningAgent
 
 problem = """
 Look for a file called finished_cases.csv in your workspace. If you find it, it should contain a column named something like "log Yield".
@@ -149,7 +149,7 @@ if __name__ == "__main__":
 
 # Columns in the CSV file: ['logYield', 'DT', 'Inner Shell', 'Tamper', 'Foam', 'Ablator']
 #  and STDERR: Traceback (most recent call last):
-#   File "/Users/mikegros/Projects/AIDI/oppenai/examples/workspace/gp_model_training.py", line 29, in <module>
+#   File "/Users/mikegros/Projects/AIDI/ursa/examples/workspace/gp_model_training.py", line 29, in <module>
 #     raise ValueError("No column resembling 'log Yield' found in the CSV header.")
 # ValueError: No column resembling 'log Yield' found in the CSV header.
 

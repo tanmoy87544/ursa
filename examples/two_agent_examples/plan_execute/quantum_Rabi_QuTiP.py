@@ -1,7 +1,7 @@
 from langchain_community.chat_models import ChatLiteLLM
 from langchain_core.messages import HumanMessage
 
-from oppenai.agents import ExecutionAgent, PlanningAgent
+from ursa.agents import ExecutionAgent, PlanningAgent
 
 problem = """
 Design, run and visualize the effects of the counter-rotating states in the quantum Rabi model using the QuTiP

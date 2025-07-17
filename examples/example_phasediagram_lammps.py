@@ -1,7 +1,7 @@
 from langchain_community.chat_models import ChatLiteLLM
 from langchain_core.messages import HumanMessage
 
-from oppenai.agents import (
+from ursa.agents import (
     ExecutionAgent,
     HypothesizerState,
     PlanningAgent,
