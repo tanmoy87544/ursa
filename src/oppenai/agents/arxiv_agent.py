@@ -9,6 +9,7 @@ from urllib.parse import quote
 from typing_extensions import TypedDict, List
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from tqdm import tqdm
+import statistics
 
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_core.output_parsers import StrOutputParser
@@ -215,7 +216,7 @@ class ArxivAgent(BaseAgent):
 
                 if relevant_docs_with_scores:
                     score = sum([s for _, s in relevant_docs_with_scores]) / len(relevant_docs_with_scores)
-                    relevancy_scores[i] = round(score, 4)
+                    relevancy_scores[i] = score
                 else:
                     relevancy_scores[i] = 0.0
                     
@@ -241,7 +242,9 @@ class ArxivAgent(BaseAgent):
                 summaries[i] = result
 
         print(f"Max Relevancy Score: {max(relevancy_scores)}")
-
+        print(f"Min Relevancy Score: {min(relevancy_scores)}")
+        print(f"Median Relevancy Score: {statistics.median(relevancy_scores)}")
+        
         return {**state, "summaries": summaries}
 
 
