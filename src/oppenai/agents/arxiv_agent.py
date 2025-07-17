@@ -197,23 +197,35 @@ class ArxivAgent(BaseAgent):
         chain = prompt | self.llm | StrOutputParser()
 
         summaries = [None] * len(state["papers"])
+        relevancy_scores = [0.0] * len(state["papers"])
     
         def process_paper(i, paper):
             arxiv_id = paper["arxiv_id"]
             summary_filename = os.path.join(self.summaries_path, f"{arxiv_id}_summary.txt")
             
             if os.path.exists(summary_filename):
+                relevancy_scores[i] = 0.0
                 with open(summary_filename, 'r') as f:
                     return i, f.read()
 
             try:
                 retriever = self._get_or_build_vectorstore(paper["full_text"], arxiv_id)
-                relevant_docs = retriever.invoke(state["context"])
-                retrieved_content = "\n\n".join([doc.page_content for doc in relevant_docs])
+
+                relevant_docs_with_scores = retriever.vectorstore.similarity_search_with_score(state["context"], k=5)
+
+                if relevant_docs_with_scores:
+                    score = sum([s for _, s in relevant_docs_with_scores]) / len(relevant_docs_with_scores)
+                    relevancy_scores[i] = round(score, 4)
+                else:
+                    relevancy_scores[i] = 0.0
+                    
+                retrieved_content = "\n\n".join([doc.page_content for doc, _ in relevant_docs_with_scores])
+                
                 summary = chain.invoke({"retrieved_content": retrieved_content, "context": state["context"]})
                 
             except Exception as e:
                 summary = f"Error summarizing paper: {e}"
+                relevancy_scores[i] = 0.0
                             
             with open(summary_filename, "w") as f:
                 f.write(summary)
@@ -227,6 +239,8 @@ class ArxivAgent(BaseAgent):
             for future in tqdm(as_completed(futures), total=len(futures), desc="Summarizing Papers"):
                 i, result = future.result()
                 summaries[i] = result
+
+        print(f"Max Relevancy Score: {max(relevancy_scores)}")
 
         return {**state, "summaries": summaries}
 
