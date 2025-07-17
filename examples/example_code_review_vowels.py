@@ -2,7 +2,7 @@ import sys
 
 from langchain_community.chat_models import ChatLiteLLM
 
-from oppenai.agents import CodeReviewAgent
+from ursa.agents import CodeReviewAgent
 
 
 def main(mode: str):

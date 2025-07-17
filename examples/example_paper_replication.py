@@ -5,7 +5,7 @@ from langchain_core.messages import HumanMessage
 from langchain_openai import ChatOpenAI
 from pypdf import PdfReader
 
-from oppenai.agents import (
+from ursa.agents import (
     ExecutionAgent,
     PlanningAgent,
 )
@@ -285,7 +285,7 @@ if __name__ == "__main__":
 # RUNNING:  python step3_baseline_modeling.py
 # STDOUT:
 # STDERR:  Traceback (most recent call last):
-#   File "/Users/mikegros/Projects/AIDI/oppenai/examples/workspace/step3_baseline_modeling.py", line 12, in <module>
+#   File "/Users/mikegros/Projects/AIDI/ursa/examples/workspace/step3_baseline_modeling.py", line 12, in <module>
 #     df = pd.read_csv('modified_df.csv')
 #   File "/Users/mikegros/envs/agentic/lib/python3.9/site-packages/pandas/io/parsers/readers.py", line 912, in read_csv
 #     return _read(filepath_or_buffer, kwds)
@@ -370,7 +370,7 @@ if __name__ == "__main__":
 # STDOUT:  Synthetic dataset shape: (201, 13)
 
 # STDERR:  Traceback (most recent call last):
-#   File "/Users/mikegros/Projects/AIDI/oppenai/examples/workspace/pytorch_nn_model.py", line 62, in <module>
+#   File "/Users/mikegros/Projects/AIDI/ursa/examples/workspace/pytorch_nn_model.py", line 62, in <module>
 #     encoder = OneHotEncoder(sparse=False)
 # TypeError: __init__() got an unexpected keyword argument 'sparse'
 

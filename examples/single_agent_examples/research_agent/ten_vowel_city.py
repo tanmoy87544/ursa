@@ -3,7 +3,7 @@ import sys
 from langchain_community.chat_models import ChatLiteLLM
 from langchain_core.messages import HumanMessage
 
-from oppenai.agents import ResearchAgent
+from ursa.agents import ResearchAgent
 
 
 ##### Run a simple example of a Reearch Agent.

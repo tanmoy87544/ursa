@@ -1,11 +1,11 @@
 from langchain_community.chat_models import ChatLiteLLM
 from langchain_core.messages import HumanMessage
 
-from oppenai.agents import (
+from ursa.agents import (
     ExecutionAgent,
     PlanningAgent,
 )
-from oppenai.prompt_library.planning_prompts import detailed_planner_prompt
+from ursa.prompt_library.planning_prompts import detailed_planner_prompt
 
 problem_definition = """
 Look for a file called finished_cases.csv in your workspace. If you find it, it should contain a column named something like "log Yield".
@@ -423,7 +423,7 @@ if __name__ == "__main__":
 # RUNNING:  python verify_data_split.py
 # STDOUT:
 # STDERR:  Traceback (most recent call last):
-#   File "/Users/mikegros/Projects/AIDI/oppenai/examples/workspace/verify_data_split.py", line 18, in <module>
+#   File "/Users/mikegros/Projects/AIDI/ursa/examples/workspace/verify_data_split.py", line 18, in <module>
 #     raise ValueError("Target column with name containing 'log Yield' not found in the CSV file.")
 # ValueError: Target column with name containing 'log Yield' not found in the CSV file.
 
@@ -529,7 +529,7 @@ if __name__ == "__main__":
 # RUNNING:  python gp_training_loop.py
 # STDOUT:
 # STDERR:  Traceback (most recent call last):
-#   File "/Users/mikegros/Projects/AIDI/oppenai/examples/workspace/gp_training_loop.py", line 22, in <module>
+#   File "/Users/mikegros/Projects/AIDI/ursa/examples/workspace/gp_training_loop.py", line 22, in <module>
 #     raise ValueError("The expected column 'log Yield' was not found in the data.")
 # ValueError: The expected column 'log Yield' was not found in the data.
 
@@ -567,7 +567,7 @@ if __name__ == "__main__":
 # RUNNING:  python model_training.py
 # STDOUT:
 # STDERR:  Traceback (most recent call last):
-#   File "/Users/mikegros/Projects/AIDI/oppenai/examples/workspace/model_training.py", line 15, in <module>
+#   File "/Users/mikegros/Projects/AIDI/ursa/examples/workspace/model_training.py", line 15, in <module>
 #     from numpyro.infer import SVI, Trace_ELBO, init_to_mean, AutoNormal
 # ImportError: cannot import name 'AutoNormal' from 'numpyro.infer' (/Users/mikegros/envs/agentic/lib/python3.9/site-packages/numpyro/infer/__init__.py)
 
@@ -576,7 +576,7 @@ if __name__ == "__main__":
 # [PASSED] the safety check: python model_training.py
 # RUNNING:  python model_training.py
 # STDOUT:
-# STDERR:    File "/Users/mikegros/Projects/AIDI/oppenai/examples/workspace/model_training.py", line 28
+# STDERR:    File "/Users/mikegros/Projects/AIDI/ursa/examples/workspace/model_training.py", line 28
 #     data = pd.read_csv(csv_filename)
 # IndentationError: unexpected indent
 
@@ -586,7 +586,7 @@ if __name__ == "__main__":
 # RUNNING:  python model_training.py
 # STDOUT:
 # STDERR:  Traceback (most recent call last):
-#   File "/Users/mikegros/Projects/AIDI/oppenai/examples/workspace/model_training.py", line 17, in <module>
+#   File "/Users/mikegros/Projects/AIDI/ursa/examples/workspace/model_training.py", line 17, in <module>
 #     from numpyro.infer.autoguide import AutoNormal, init_to_mean
 # ImportError: cannot import name 'init_to_mean' from 'numpyro.infer.autoguide' (/Users/mikegros/envs/agentic/lib/python3.9/site-packages/numpyro/infer/autoguide.py)
 
@@ -596,7 +596,7 @@ if __name__ == "__main__":
 # RUNNING:  python model_training.py
 # STDOUT:
 # STDERR:  Traceback (most recent call last):
-#   File "/Users/mikegros/Projects/AIDI/oppenai/examples/workspace/model_training.py", line 17, in <module>
+#   File "/Users/mikegros/Projects/AIDI/ursa/examples/workspace/model_training.py", line 17, in <module>
 #     from numpyro.infer.autoguide import AutoNormal, init_to_mean
 # ImportError: cannot import name 'init_to_mean' from 'numpyro.infer.autoguide' (/Users/mikegros/envs/agentic/lib/python3.9/site-packages/numpyro/infer/autoguide.py)
 
@@ -714,7 +714,7 @@ if __name__ == "__main__":
 # Initializing Bayesian Neural Network with numpyro...
 
 # STDERR:  Traceback (most recent call last):
-#   File "/Users/mikegros/Projects/AIDI/oppenai/examples/workspace/model_training.py", line 182, in <module>
+#   File "/Users/mikegros/Projects/AIDI/ursa/examples/workspace/model_training.py", line 182, in <module>
 #     optimizer_np = Adam(learning_rate=0.01)
 #   File "/Users/mikegros/envs/agentic/lib/python3.9/site-packages/numpyro/optim.py", line 184, in __init__
 #     super(Adam, self).__init__(optimizers.adam, *args, **kwargs)
@@ -925,9 +925,9 @@ if __name__ == "__main__":
 # Writing filename  inference_config.py
 # Written code to file: ./workspace/inference_config.py
 # ^CTraceback (most recent call last):
-#   File "/Users/mikegros/Projects/AIDI/oppenai/examples/example_surrogate_detailed.py", line 91, in <module>
+#   File "/Users/mikegros/Projects/AIDI/ursa/examples/example_surrogate_detailed.py", line 91, in <module>
 #     main()
-#   File "/Users/mikegros/Projects/AIDI/oppenai/examples/example_surrogate_detailed.py", line 77, in main
+#   File "/Users/mikegros/Projects/AIDI/ursa/examples/example_surrogate_detailed.py", line 77, in main
 #     final_results       = executor.action.invoke({"messages": [HumanMessage(content=substep_prompt)]},{"recursion_limit": 999999})
 #   File "/Users/mikegros/envs/agentic/lib/python3.9/site-packages/langgraph/pregel/__init__.py", line 2336, in invoke
 #     for chunk in self.stream(
@@ -941,7 +941,7 @@ if __name__ == "__main__":
 #     input = step.invoke(input, config, **kwargs)
 #   File "/Users/mikegros/envs/agentic/lib/python3.9/site-packages/langgraph/utils/runnable.py", line 310, in invoke
 #     ret = context.run(self.func, *args, **kwargs)
-#   File "/Users/mikegros/Projects/AIDI/oppenai/examples/../.././oppenai/agents/execution_agent.py", line 44, in query_executor
+#   File "/Users/mikegros/Projects/AIDI/ursa/examples/../.././ursa/agents/execution_agent.py", line 44, in query_executor
 #     response = self.llm.invoke(messages)
 #   File "/Users/mikegros/envs/agentic/lib/python3.9/site-packages/langchain_core/runnables/base.py", line 5360, in invoke
 #     return self.bound.invoke(

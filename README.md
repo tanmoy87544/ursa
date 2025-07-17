@@ -1,6 +1,6 @@
-# OppenAI - The LANL Scientific Agent
+# URSA - The LANL Scientific Agent
 
-<img src="./logos/logo.png" alt="OppenAI Logo" width="200" height="200">
+<img src="./logos/logo.png" alt="URSA Logo" width="200" height="200">
 
 The flexible agentic workflow for accelerating scientific tasks. 
 Composes information flow between agents for planning, code writing and execution, and online research to solve complex problems.
@@ -8,12 +8,12 @@ Composes information flow between agents for planning, code writing and executio
 ## Installation
 With pip:
 ```console
-pip install git+ssh://git@gitlab.lanl.gov/science-fair/lanl_scientific_agent.git
+pip install git+ssh://git@lisdi-git.lanl.gov:10022/artimis/ursa.git
 ```
 
 With uv:
 ```console
-uv add git+ssh://git@gitlab.lanl.gov/science-fair/lanl_scientific_agent.git
+uv add git+ssh://git@lisdi-git.lanl.gov:10022/artimis/ursa.git
 ```
 
 ## How to use this code
@@ -31,10 +31,10 @@ and execute code has the potential to cause problems like:
 The Research Agent scrapes data from urls, so has the potential to attempt to pull information from questionable sources.
 
 Some suggestions for sandboxing the agent:
-- Creating a specific environment such that limits OppenAI's access to only what you want. Examples:
+- Creating a specific environment such that limits URSA's access to only what you want. Examples:
     - Creating/using a virtual machine that is sandboxed from the rest of your machine
-    - Creating a new account on your machine specifically for OppenAI 
+    - Creating a new account on your machine specifically for URSA 
 - Creating a network blacklist/whitelist to ensure that network commands and webscraping are contained to safe sources
 
-You have a duty for ensuring that you use OppenAI responsibly.
+You have a duty for ensuring that you use URSA responsibly.
 
