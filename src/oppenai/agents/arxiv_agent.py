@@ -216,7 +216,7 @@ class ArxivAgent(BaseAgent):
 
                 if relevant_docs_with_scores:
                     score = sum([s for _, s in relevant_docs_with_scores]) / len(relevant_docs_with_scores)
-                    relevancy_scores[i] = score
+                    relevancy_scores[i] = abs(1.0 - score)
                 else:
                     relevancy_scores[i] = 0.0
                     
@@ -244,6 +244,7 @@ class ArxivAgent(BaseAgent):
         print(f"Max Relevancy Score: {max(relevancy_scores)}")
         print(f"Min Relevancy Score: {min(relevancy_scores)}")
         print(f"Median Relevancy Score: {statistics.median(relevancy_scores)}")
+        print()
         
         return {**state, "summaries": summaries}
 
