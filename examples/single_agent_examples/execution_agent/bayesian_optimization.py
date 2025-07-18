@@ -1,10 +1,9 @@
 import sys
 
-from langchain_community.chat_models import ChatLiteLLM
 from langchain_core.messages import HumanMessage
+from langchain_litellm import ChatLiteLLM
 
 from oppenai.agents import ExecutionAgent
-
 
 ### Run a simple example of an Execution Agent.
 
@@ -35,8 +34,7 @@ if set_workspace:
     }
 
     print(f"\nSolving problem: {problem}\n")
-    
-    
+
     # Solve the problem
     final_results = executor.action.invoke(init)
 else:
@@ -44,5 +42,3 @@ else:
 
 for x in final_results["messages"]:
     print(x.content)
-
-
