@@ -1,7 +1,7 @@
 import os
 import sys
 
-from langchain_community.chat_models import ChatLiteLLM
+from langchain_litellm import ChatLiteLLM
 
 from ursa.agents import CodeReviewAgent
 

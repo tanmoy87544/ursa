@@ -1,7 +1,7 @@
 import sys
 
-from langchain_community.chat_models import ChatLiteLLM
 from langchain_core.messages import HumanMessage
+from langchain_litellm import ChatLiteLLM
 
 from ursa.agents import ArxivAgent
 from ursa.agents import ExecutionAgent
@@ -12,17 +12,22 @@ def main():
         model="openai/o3",
         max_tokens=50000,
     )
-    
-    agent  = ArxivAgent(llm=model, summarize = True, process_images = False, 
-                       max_results        = 5,   
-                       database_path      ='database_neutron_star',
-                       summaries_path     ='database_summaries_neutron_star', 
-                       vectorstore_path   ='vectorstores_neutron_star', 
-                       download_papers    = True)
-    
-    
-    result = agent.run(arxiv_search_query="Experimental Constraints on neutron star radius", 
-                       context="What are the constraints on the neutron star radius and what uncertainties are there on the constraints?")
+
+    agent = ArxivAgent(
+        llm=model,
+        summarize=True,
+        process_images=False,
+        max_results=5,
+        database_path="database_neutron_star",
+        summaries_path="database_summaries_neutron_star",
+        vectorstore_path="vectorstores_neutron_star",
+        download_papers=True,
+    )
+
+    result = agent.run(
+        arxiv_search_query="Experimental Constraints on neutron star radius",
+        context="What are the constraints on the neutron star radius and what uncertainties are there on the constraints?",
+    )
     print(result)
     executor = ExecutionAgent(llm=model)
     exe_plan = f"""
@@ -34,14 +39,13 @@ def main():
     will be reviewed by experts in the field so technical accuracy and clarity is 
     critical.
     """
-    
-    init = {"messages":[HumanMessage(content=exe_plan)]}
+
+    init = {"messages": [HumanMessage(content=exe_plan)]}
 
     final_results = executor.action.invoke(init)
-    
+
     for x in final_results["messages"]:
         print(x.content)
-    
 
 
 if __name__ == "__main__":

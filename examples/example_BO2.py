@@ -1,9 +1,10 @@
 import sys
 
-from langchain_community.chat_models import ChatLiteLLM
 from langchain_core.messages import HumanMessage
+from langchain_litellm import ChatLiteLLM
 
-from ursa.agents import ExecutionAgent, LiteratureAgent
+from ursa.agents import ExecutionAgent, ResearchAgent
+
 
 
 def main(mode: str):
@@ -28,7 +29,7 @@ def main(mode: str):
         init = {"messages": [HumanMessage(content=problem)]}
 
         executor = ExecutionAgent(llm=model)
-        literature_agent = LiteratureAgent(llm=model)
+        literature_agent = ResearchAgent(llm=model)
 
         execution_results = executor.action.invoke(init)
 
@@ -40,7 +41,7 @@ def main(mode: str):
         )
         start_string = (
             start_string
-            + '"\n Browse the arxiv literature to see if this is reasonable.'
+            + '"\n Use web search to see if this is reasonable.'
         )
 
         final_results = literature_agent.action.invoke(
