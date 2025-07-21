@@ -10,13 +10,14 @@ from typing_extensions import TypedDict, List
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from tqdm import tqdm
 import statistics
+import re
 
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langgraph.graph import StateGraph, END, START
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_community.vectorstores import FAISS
+from langchain_chroma import Chroma
 from langchain_openai import OpenAIEmbeddings
 
 from openai import OpenAI
@@ -25,6 +26,8 @@ from .base import BaseAgent
 
 
 client = OpenAI()
+
+embeddings = OpenAIEmbeddings()
 
 class PaperMetadata(TypedDict):
     arxiv_id: str
@@ -89,6 +92,9 @@ def extract_and_describe_images(pdf_path: str, max_images: int = 5) -> List[str]
     return descriptions
 
 
+def remove_surrogates(text: str) -> str:
+    return re.sub(r'[\ud800-\udfff]', '', text)
+
 
 class ArxivAgent(BaseAgent):
     def __init__(self, llm="openai/o3-mini", summarize: bool = True, process_images = True, max_results: int = 3,
@@ -141,11 +147,15 @@ class ArxivAgent(BaseAgent):
                         
 
         papers = []
-        for i,pdf_filename in enumerate(os.listdir(self.database_path)):
+
+        pdf_files = [f for f in os.listdir(self.database_path) if f.lower().endswith(".pdf")]
+        
+        for i,pdf_filename in enumerate(pdf_files):
             full_text = ""
             arxiv_id = pdf_filename.split('.pdf')[0]
             vec_save_loc =  self.vectorstore_path + '/' + arxiv_id
-            if self.summarize and not os.path.exists(os.path.join(vec_save_loc, "index.faiss")):
+
+            if self.summarize and not os.path.exists(vec_save_loc):
                 try:
                     loader = PyPDFLoader( os.path.join(self.database_path, pdf_filename) )
                     pages = loader.load()
@@ -171,17 +181,16 @@ class ArxivAgent(BaseAgent):
 
     
     def _get_or_build_vectorstore(self, paper_text: str, arxiv_id: str):
-        save_loc =  self.vectorstore_path + '/' + arxiv_id
-        embeddings = OpenAIEmbeddings()
-    
-        if os.path.exists(os.path.join(save_loc, "index.faiss")):
-            vectorstore = FAISS.load_local(save_loc, embeddings,allow_dangerous_deserialization=True)
+        
+        persist_directory = os.path.join(self.vectorstore_path, arxiv_id)
+        
+        if os.path.exists(persist_directory):
+            vectorstore = Chroma(persist_directory=persist_directory, embedding_function=embeddings)
         else:
             splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
             docs = splitter.create_documents([paper_text])
-            vectorstore = FAISS.from_documents(docs, embeddings)
-            vectorstore.save_local(save_loc)
-    
+            vectorstore = Chroma.from_documents(docs, embeddings, persist_directory=persist_directory)
+            
         return vectorstore.as_retriever(search_kwargs={"k": 5})
          
 
@@ -210,7 +219,8 @@ class ArxivAgent(BaseAgent):
                     return i, f.read()
 
             try:
-                retriever = self._get_or_build_vectorstore(paper["full_text"], arxiv_id)
+                cleaned_text = remove_surrogates(paper["full_text"])
+                retriever = self._get_or_build_vectorstore(cleaned_text, arxiv_id)
 
                 relevant_docs_with_scores = retriever.vectorstore.similarity_search_with_score(state["context"], k=5)
 
@@ -241,6 +251,7 @@ class ArxivAgent(BaseAgent):
                 i, result = future.result()
                 summaries[i] = result
 
+        print()
         print(f"Max Relevancy Score: {max(relevancy_scores)}")
         print(f"Min Relevancy Score: {min(relevancy_scores)}")
         print(f"Median Relevancy Score: {statistics.median(relevancy_scores)}")
