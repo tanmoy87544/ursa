@@ -25,7 +25,7 @@ def main():
                        database_path      ='database',
                        summaries_path     ='database_summaries', 
                        vectorstore_path   ='vectorstores', 
-                       download_papers    = False)
+                       download_papers    = True)
     
 
     t0 = time.time()
