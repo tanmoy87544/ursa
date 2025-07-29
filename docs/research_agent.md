@@ -1,0 +1,84 @@
+# ResearchAgent Documentation
+
+`ResearchAgent` is a powerful tool for conducting internet-based research on any topic. It leverages language models and web search capabilities to gather, process, and summarize information from online sources.
+
+## Basic Usage
+
+```python
+from ursa.agents import ResearchAgent
+from langchain_openai import ChatOpenAI
+
+# Initialize with default model (gpt-4o-mini)
+researcher = ResearchAgent()
+
+# Or initialize with a custom model
+model = ChatOpenAI(model="gpt-4o", max_tokens=10000)
+researcher = ResearchAgent(llm=model)
+
+# Run a research query
+result = researcher.run("Who are the 2025 Detroit Tigers top 10 prospects and what year were they born?")
+
+# Access the research results
+final_summary = result["messages"][-1].content
+sources = result["urls_visited"]
+
+print("Research Summary:")
+print(final_summary)
+print("Sources:", sources)
+```
+
+## Parameters
+
+### Initialization
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `llm` | str or BaseChatModel | "openai/gpt-4o-mini" | The language model to use for research |
+| `**kwargs` | dict | {} | Additional parameters passed to the base agent |
+
+### Run Method
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `prompt` | str | Required | The research question or topic |
+| `recursion_limit` | int | 100 | Maximum recursion depth for the research process |
+
+## Features
+
+- **Automated Web Search**: Uses DuckDuckGo to find relevant information
+- **Content Processing**: Extracts and summarizes content from web pages
+- **Iterative Research**: Continues researching until sufficient information is gathered
+- **Source Tracking**: Records all URLs visited during research
+- **Internet Connectivity Check**: Verifies internet access before attempting research
+
+## Output
+
+The agent returns a dictionary containing:
+
+- `messages`: A list of message objects, with the final message containing the comprehensive research summary
+- `urls_visited`: A list of all sources consulted during the research process
+
+## Advanced Usage
+
+```python
+from ursa.agents import ResearchAgent
+
+# Initialize with custom parameters
+researcher = ResearchAgent(
+    llm="openai/gpt-4o",
+    url="https://www.example.com"  # Custom URL for internet connectivity check
+)
+
+# Run with higher recursion limit for complex topics
+result = researcher.run(
+    "What are the latest developments in quantum computing? Summarize in markdown format.",
+    recursion_limit=200
+)
+```
+
+## Notes
+
+- The agent requires internet connectivity to function properly
+- Rate limiting is implemented to avoid overwhelming search services
+- For networks with SSL inspection, you may need to set the `CERT_FILE` environment variable
+- The research process includes multiple steps: search, content processing, review, and final summarization
