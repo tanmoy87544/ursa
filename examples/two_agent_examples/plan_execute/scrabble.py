@@ -1,20 +1,20 @@
+import sqlite3
 import sys
 from pathlib import Path
-import sqlite3
 
-from langchain_community.chat_models import ChatLiteLLM
-from langgraph.checkpoint.sqlite import SqliteSaver
+from langchain_litellm import ChatLiteLLM
 from langchain_core.messages import HumanMessage
-
+from langgraph.checkpoint.sqlite import SqliteSaver
 from ursa.agents import ExecutionAgent, PlanningAgent
 
 # rich console stuff for beautification
 from rich.console import Console
 from rich.panel import Panel
+from rich.progress import BarColumn, Progress, SpinnerColumn, TextColumn
 from rich.text import Text
-from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn
 
-console = Console()          # global console object
+console = Console()  # global console object
+
 
 def main(mode: str):
     """Run a simple example of an agent."""
@@ -36,11 +36,13 @@ def main(mode: str):
             "certificate is at ~/zscaler_root.pem"
         )
 
-
         # print the problem we're solving in a nice little box / panel
         console.print(
             Panel.fit(
-                Text.from_markup(f"[bold cyan]Solving problem:[/] {problem}", justify="center"),
+                Text.from_markup(
+                    f"[bold cyan]Solving problem:[/] {problem}",
+                    justify="center",
+                ),
                 border_style="cyan",
             )
         )
@@ -59,25 +61,31 @@ def main(mode: str):
         db_path.parent.mkdir(parents=True, exist_ok=True)
         conn = sqlite3.connect(str(db_path), check_same_thread=False)
         checkpointer = SqliteSaver(conn)
-        
+
         # Initialize the agents
         planner = PlanningAgent(llm=model, checkpointer=checkpointer)
         executor = ExecutionAgent(llm=model, checkpointer=checkpointer)
 
         # 3. top level planning
         # planning agent . . .
-        with console.status("[bold green]Planning overarching steps . . .", spinner="point"):
+        with console.status(
+            "[bold green]Planning overarching steps . . .", spinner="point"
+        ):
             planning_output = planner.action.invoke(
-                {"messages": [HumanMessage(content=problem)]}, 
+                {"messages": [HumanMessage(content=problem)]},
                 {
                     "recursion_limit": 999_999,
-                    "configurable": { "thread_id": planner.thread_id }
+                    "configurable": {"thread_id": planner.thread_id},
                 },
             )
 
-        console.print(Panel(planning_output["messages"][-1].content, title="[yellow]📋 Plan"))
+        console.print(
+            Panel(
+                planning_output["messages"][-1].content, title="[yellow]📋 Plan"
+            )
+        )
 
-        last_step_summary     = "Beginning to break down step 1 of the plan."
+        last_step_summary = "Beginning to break down step 1 of the plan."
         detail_planner_prompt = "Flesh out the details of this step and generate substeps to handle the details."
 
         # ── OUTER progress bar over main plan steps ─────────────────────────────
@@ -108,7 +116,10 @@ def main(mode: str):
                 )
                 console.print(
                     Panel.fit(
-                        Text.from_markup(f"[bold cyan]STEP {main_step_number} - LLM Prompt:[/] {step_prompt}", justify="center"),
+                        Text.from_markup(
+                            f"[bold cyan]STEP {main_step_number} - LLM Prompt:[/] {step_prompt}",
+                            justify="center",
+                        ),
                         border_style="cyan",
                     )
                 )
@@ -117,7 +128,7 @@ def main(mode: str):
                     {"messages": [HumanMessage(content=step_prompt)]},
                     {
                         "recursion_limit": 999_999,
-                        "configurable": { "thread_id": planner.thread_id }
+                        "configurable": {"thread_id": planner.thread_id},
                     },
                 )
 
@@ -138,7 +149,10 @@ def main(mode: str):
                     )
                     console.print(
                         Panel.fit(
-                            Text.from_markup(f"[bold red]Sub-STEP {sub_step_number} - LLM Prompt:[/] {sub_prompt}", justify="center"),
+                            Text.from_markup(
+                                f"[bold red]Sub-STEP {sub_step_number} - LLM Prompt:[/] {sub_prompt}",
+                                justify="center",
+                            ),
                             border_style="red",
                         )
                     )
@@ -150,12 +164,12 @@ def main(mode: str):
                         },
                         {
                             "recursion_limit": 999_999,
-                            "configurable": { "thread_id": executor.thread_id }
+                            "configurable": {"thread_id": executor.thread_id},
                         },
                     )
 
                     last_sub_summary = final_results["messages"][-1].content
-                    progress.console.log(last_sub_summary)   # live streaming log
+                    progress.console.log(last_sub_summary)  # live streaming log
                     progress.advance(sub_task)
 
                     sub_step_number += 1
@@ -169,7 +183,9 @@ def main(mode: str):
         answer = last_step_summary
         console.print(
             Panel.fit(
-                Text.from_markup(f"[bold white on green] ✔  Answer:[/] {answer}"),
+                Text.from_markup(
+                    f"[bold white on green] ✔  Answer:[/] {answer}"
+                ),
                 border_style="green",
             )
         )
@@ -190,9 +206,13 @@ if __name__ == "__main__":
     print("=" * 80)
     print("=" * 80)
 
-    console.print(Panel.fit(
-        Text.from_markup(f"[bold white on green] ✔  Answer:[/] {final_output}"),
-        border_style="green",
-    ))
+    console.print(
+        Panel.fit(
+            Text.from_markup(
+                f"[bold white on green] ✔  Answer:[/] {final_output}"
+            ),
+            border_style="green",
+        )
+    )
 
     console.rule("[bold cyan]Run complete")

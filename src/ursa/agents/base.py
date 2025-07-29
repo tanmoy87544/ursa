@@ -1,5 +1,5 @@
-from langchain_community.chat_models import ChatLiteLLM
 from langchain_core.language_models.chat_models import BaseChatModel
+from langchain_litellm import ChatLiteLLM
 from langgraph.checkpoint.base import BaseCheckpointSaver
 
 
@@ -7,10 +7,11 @@ class BaseAgent:
     # llm: BaseChatModel
     # llm_with_tools: Runnable[LanguageModelInput, BaseMessage]
 
-    def __init__(self, 
-    llm: str | BaseChatModel, 
-    checkpointer: BaseCheckpointSaver = None,
-    **kwargs
+    def __init__(
+        self,
+        llm: str | BaseChatModel,
+        checkpointer: BaseCheckpointSaver = None,
+        **kwargs,
     ):
         match llm:
             case BaseChatModel():

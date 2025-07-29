@@ -21,6 +21,17 @@ Better documentation will be incoming, but for now there are examples in the exa
 a decent idea for how to set up some basic problems. They also should give some idea of how to pass results from
 one agent to another. I will look to add things with multi-agent graphs, etc. in the future. 
 
+Documentation for each URSA agent:
+- [Planning Agent](docs/planning_agent.md)
+- [Execution Agent](docs/execution_agent.md)
+- [ArXiv Agent](docs/arxiv_agent.md)
+- [Research Agent](docs/research_agent.md)
+- [Hypothesizer Agent](docs/hypothesizer_agent.md)
+
+Documentation for combining agents:
+- [ArXiv -> Execution for Materials](docs/combining_arxiv_and_execution.md )
+- [ArXiv -> Execution for Neurton Star Properties](docs/combining_arxiv_and_execution_neutronStar.md  )
+
 # Sandboxing
 The Execution Agent is allowed to run system commands and write/run code. Being able to execute arbitrary system commands or write
 and execute code has the potential to cause problems like:

@@ -1,5 +1,5 @@
-from langchain_community.chat_models import ChatLiteLLM
 from langchain_core.messages import HumanMessage
+from langchain_litellm import ChatLiteLLM
 
 from ursa.agents import (
     ExecutionAgent,
@@ -77,7 +77,10 @@ def main():
                 {execute_string}
             """
             final_results = executor.action.invoke(
-                {"messages": [HumanMessage(content=step_prompt)],"workspace":"phase_diagram"},
+                {
+                    "messages": [HumanMessage(content=step_prompt)],
+                    "workspace": "phase_diagram",
+                },
                 {"recursion_limit": 999999},
             )
             last_step_string = final_results["messages"][-1].content
