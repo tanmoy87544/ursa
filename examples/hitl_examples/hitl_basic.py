@@ -8,7 +8,7 @@ from langgraph.checkpoint.sqlite import SqliteSaver
 
 header = """
 Testing a HITL version of URSA. Direct a prompt to either the:
-[Arxiver], [Executor], [Planner], [Researcher]
+[Arxiver], [Executor], [Planner], [Researcher], [Chatter]
 
 The agent will get your prompt, the output of the last agent (if any), and their previous history.
 when done use the escape key [USER DONE].
@@ -112,6 +112,30 @@ def main():
                     })
                 last_agent_result = planner_state["messages"][-1].content
             print(f"[Planner Agent Output]:\n {last_agent_result}")
+            continue
+
+        if "[Researcher]" in user_prompt:
+            if researcher_state:
+                researcher_state["messages"].append(HumanMessage(f"The last agent output was: {last_agent_result}\n The user stated: {user_prompt}"))
+                researcher_state = researcher.action.invoke(researcher_state, {
+                        "recursion_limit": 999999,
+                        "configurable": {"thread_id": researcher.thread_id},
+                    })
+                last_agent_result = researcher_state["messages"][-1].content
+            else:
+                researcher_state = {"messages":[HumanMessage(f"The last agent output was: {last_agent_result}\n The user stated: {user_prompt}")]}
+                researcher_state = researcher.action.invoke(researcher_state, {
+                        "recursion_limit": 999999,
+                        "configurable": {"thread_id": researcher.thread_id},
+                    })
+                last_agent_result = researcher_state["messages"][-1].content
+            print(f"[Planner Agent Output]:\n {last_agent_result}")
+            continue
+
+        if "[Chatter]" in user_prompt:
+            chat_output = model.invoke(HumanMessage(f"The last agent output was: {last_agent_result}\n The user stated: {user_prompt}"))
+            last_agent_result = chat_output.content
+            print(f"[Chatter Output]:\n {last_agent_result}")
             continue
 
         print("You did not invoke an agent or escape. What are you doing?")
