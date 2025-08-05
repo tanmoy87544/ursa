@@ -17,8 +17,8 @@ problem = """
 """
 
 model = ChatLiteLLM(
-    model="openai/o3-mini",
-    max_tokens=50000,
+    model="openai/o3",
+    max_tokens=30000,
 )
 
 # Initialize the agent

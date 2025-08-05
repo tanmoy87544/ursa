@@ -77,6 +77,9 @@ class ExecutionAgent(BaseAgent):
                 SystemMessage(content=self.executor_prompt)
             ] + state["messages"]
         try:
+            # aaa = self.action.get_state({"configurable": {"thread_id": self.thread_id}}).values["messages"]
+            # for aa in aaa:
+            #     print(aa)
             response = self.llm.invoke(new_state["messages"], {"configurable": {"thread_id": self.thread_id}})
         except ContentPolicyViolationError as e:
             print("Error: ", e, " ",new_state["messages"][-1].content)
