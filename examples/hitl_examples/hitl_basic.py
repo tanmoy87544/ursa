@@ -133,7 +133,7 @@ def main():
             continue
 
         if "[Chatter]" in user_prompt:
-            chat_output = model.invoke(HumanMessage(f"The last agent output was: {last_agent_result}\n The user stated: {user_prompt}"))
+            chat_output = model.invoke(f"The last agent output was: {last_agent_result}\n The user stated: {user_prompt}")
             last_agent_result = chat_output.content
             print(f"[Chatter Output]:\n {last_agent_result}")
             continue
