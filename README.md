@@ -53,5 +53,5 @@ You have a duty for ensuring that you use URSA responsibly.
 
 URSA has been developed at Los Alamos National Laboratory as part of the ArtIMis project.
 
-<img src="./logos/logo.png" alt="URSA Logo" width="200" height="200">
+<img src="./logos/artimis.png" alt="ArtIMis Logo" width="200" height="200">
 
