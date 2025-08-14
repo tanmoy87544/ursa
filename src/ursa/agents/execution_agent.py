@@ -45,7 +45,7 @@ class ExecutionState(TypedDict):
     current_progress: str
     code_files: list[str]
     workspace: str
-
+    symlinkdir: dict
 
 class ExecutionAgent(BaseAgent):
     def __init__(
@@ -71,6 +71,32 @@ class ExecutionAgent(BaseAgent):
                 f"{RED}Creating the folder {BLUE}{BOLD}{new_state['workspace']}{RESET}{RED} for this project.{RESET}"
             )
         os.makedirs(new_state["workspace"], exist_ok=True)
+
+        # code related to symlink
+        if "symlinkdir" in new_state.keys() and "is_linked" not in new_state["symlinkdir"].keys():
+            # symlinkdir = {"source": "foo", "dest": "bar"}
+            symlinkdir = new_state["symlinkdir"]
+            # user provided a symlinkdir key - let's do the linking!
+
+            src = Path(symlinkdir["source"]).expanduser().resolve()
+            workspace_root = Path(new_state["workspace"]).expanduser().resolve()
+            dst = workspace_root / symlinkdir["dest"]          # prepend workspace
+
+            # if you want to replace an existing link/file, unlink it first
+            if dst.exists() or dst.is_symlink():
+                dst.unlink()
+
+            # create parent dirs for the link location if they don’t exist
+            dst.parent.mkdir(parents=True, exist_ok=True)
+
+            # actually make the link (tell pathlib it’s a directory target)
+            dst.symlink_to(src, target_is_directory=src.is_dir())
+            print(
+                f"{RED}Symlinked {src} (source) --> {dst} (dest)"
+            )
+            # note that we've done the symlink now, so don't need to do it later
+            new_state["symlinkdir"]["is_linked"] = True
+
         
         if type(new_state["messages"][0]) == SystemMessage:
             new_state["messages"][0] = SystemMessage(
@@ -157,6 +183,9 @@ class ExecutionAgent(BaseAgent):
                     For reason: {safety_check.content}
                     """
                     console.print("[bold red][WARNING][/bold red] Command deemed unsafe:", query)
+                    # and tell the user the reason
+                    console.print("[bold red][WARNING][/bold red] REASON:", tool_response)
+
                 else:
                     tool_response = f"Command `{query}` passed safety check."
                     console.print(f"[green]Command passed safety check:[/green] {query}")
