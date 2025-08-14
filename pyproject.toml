@@ -26,6 +26,7 @@ dependencies = [
     "rich>=13.7.0,<14.0",
     "langchain-chroma>=0.2.4",
     "chromadb>=1.0.15",
+    "mp-api>=0.45.8",
 ]
 
 [build-system]

@@ -18,9 +18,9 @@ def main():
         summarize=True,
         process_images=False,
         max_results=5,
-        database_path="database_neutron_star",
-        summaries_path="database_summaries_neutron_star",
-        vectorstore_path="vectorstores_neutron_star",
+        database_path="arxiv_papers_neutron_star",
+        summaries_path="arxiv_summaries_neutron_star",
+        vectorstore_path="arxiv_vectorstores_neutron_star",
         download_papers=True,
     )
 

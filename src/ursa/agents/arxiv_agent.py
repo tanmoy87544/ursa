@@ -98,9 +98,9 @@ def remove_surrogates(text: str) -> str:
 
 class ArxivAgent(BaseAgent):
     def __init__(self, llm="openai/o3-mini", summarize: bool = True, process_images = True, max_results: int = 3,
-                 database_path      ='database', 
-                 summaries_path     ='database_summaries', 
-                 vectorstore_path   ='vectorstores', 
+                 database_path      ='arxiv_papers', 
+                 summaries_path     ='arxiv_generated_summaries', 
+                 vectorstore_path   ='arxiv_vectorstores', 
                  download_papers: bool = True, **kwargs):
         
         super().__init__(llm, **kwargs)
@@ -213,11 +213,6 @@ class ArxivAgent(BaseAgent):
             arxiv_id = paper["arxiv_id"]
             summary_filename = os.path.join(self.summaries_path, f"{arxiv_id}_summary.txt")
             
-            if os.path.exists(summary_filename):
-                relevancy_scores[i] = 0.0
-                with open(summary_filename, 'r') as f:
-                    return i, f.read()
-
             try:
                 cleaned_text = remove_surrogates(paper["full_text"])
                 retriever = self._get_or_build_vectorstore(cleaned_text, arxiv_id)

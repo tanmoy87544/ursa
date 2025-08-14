@@ -1,4 +1,4 @@
-# URSA - The LANL Scientific Agent
+# URSA - The Universal Research and Scientific Agent
 
 <img src="./logos/logo.png" alt="URSA Logo" width="200" height="200">
 
@@ -25,7 +25,7 @@ Documentation for each URSA agent:
 - [Planning Agent](docs/planning_agent.md)
 - [Execution Agent](docs/execution_agent.md)
 - [ArXiv Agent](docs/arxiv_agent.md)
-- [Research Agent](docs/research_agent.md)
+- [Web Search Agent](docs/web_search_agent.md)
 - [Hypothesizer Agent](docs/hypothesizer_agent.md)
 
 Documentation for combining agents:
@@ -35,11 +35,11 @@ Documentation for combining agents:
 # Sandboxing
 The Execution Agent is allowed to run system commands and write/run code. Being able to execute arbitrary system commands or write
 and execute code has the potential to cause problems like:
-- Damage LANL code or data on the computer
+- Damage code or data on the computer
 - Damage the compter
-- Transmit LANL data
+- Transmit your local data
 
-The Research Agent scrapes data from urls, so has the potential to attempt to pull information from questionable sources.
+The Web Search Agent scrapes data from urls, so has the potential to attempt to pull information from questionable sources.
 
 Some suggestions for sandboxing the agent:
 - Creating a specific environment such that limits URSA's access to only what you want. Examples:
@@ -48,4 +48,10 @@ Some suggestions for sandboxing the agent:
 - Creating a network blacklist/whitelist to ensure that network commands and webscraping are contained to safe sources
 
 You have a duty for ensuring that you use URSA responsibly.
+
+## Development Team
+
+URSA has been developed at Los Alamos National Laboratory as part of the ArtIMis project.
+
+<img src="./logos/logo.png" alt="URSA Logo" width="200" height="200">
 

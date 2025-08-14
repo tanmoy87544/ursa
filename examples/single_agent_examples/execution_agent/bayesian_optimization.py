@@ -9,7 +9,7 @@ from ursa.agents import ExecutionAgent
 
 # Define a simple problem
 problem = """ 
-"Optimize the six-hump camel function. 
+Optimize the six-hump camel function. 
     Start by evaluating that function at 10 locations.
     Then utilize Bayesian optimization to build a surrogate model 
         and sequentially select points until the function is optimized. 
