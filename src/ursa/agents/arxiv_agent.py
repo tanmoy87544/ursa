@@ -238,6 +238,9 @@ class ArxivAgent(BaseAgent):
 
             return i, summary
             
+        if ('papers' not in state or len(state['papers']) == 0):
+            print(f"No papers retrieved - bad query or network connection to ArXiv?")
+            return {**state, "summaries": None}
 
         with ThreadPoolExecutor(max_workers=min(32, len(state["papers"]))) as executor:
             futures = [executor.submit(process_paper, i, paper) for i, paper in enumerate(state["papers"])]
@@ -260,6 +263,9 @@ class ArxivAgent(BaseAgent):
         summaries = state["summaries"]
         papers = state["papers"]
         formatted = []
+
+        if 'summaries' not in state or state['summaries'] is None or 'papers' not in state or state['papers'] is None:
+            return {**state, "final_summary": None}
 
         for i, (paper, summary) in enumerate(zip(papers, summaries)):
             citation = f"[{i+1}] Arxiv ID: {paper['arxiv_id']}"
