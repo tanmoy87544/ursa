@@ -17,9 +17,9 @@ from langgraph.prebuilt import InjectedState, create_react_agent
 from pydantic import Field
 from typing_extensions import TypedDict
 
-from ..prompt_library.research_prompts import (
+from ..prompt_library.websearch_prompts import (
     reflection_prompt,
-    research_prompt,
+    websearch_prompt,
     summarize_prompt,
 )
 from .base import BaseAgent
@@ -31,12 +31,12 @@ GREEN = "\033[92m"
 RESET = "\033[0m"
 
 
-class ResearchState(TypedDict):
-    research_query: str
+class WebSearchState(TypedDict):
+    websearch_query: str
     messages: Annotated[list, add_messages]
     urls_visited: List[str]
-    max_research_steps: Optional[int] = Field(
-        default=100, description="Maximum number of research steps"
+    max_websearch_steps: Optional[int] = Field(
+        default=100, description="Maximum number of websearch steps"
     )
     remaining_steps: int
     is_last_step: bool
@@ -48,20 +48,20 @@ class ResearchState(TypedDict):
 # all the tokens of all the sources.
 
 
-class ResearchAgent(BaseAgent):
+class WebSearchAgent(BaseAgent):
     def __init__(
         self, llm: str | BaseChatModel = "openai/gpt-4o-mini", **kwargs
     ):
         super().__init__(llm, **kwargs)
-        self.research_prompt = research_prompt
+        self.websearch_prompt = websearch_prompt
         self.reflection_prompt = reflection_prompt
         self.tools = [search_tool, process_content]  # + cb_tools
         self.has_internet = self._check_for_internet(kwargs.get("url","http://www.lanl.gov"))
         self._initialize_agent()
 
-    def review_node(self, state: ResearchState) -> ResearchState:
+    def review_node(self, state: WebSearchState) -> WebSearchState:
         if not self.has_internet:
-            return {"messages":[HumanMessage(content="No internet for Research Agent so no research to review.")], "urls_visited": []}
+            return {"messages":[HumanMessage(content="No internet for WebSearch Agent so no research to review.")], "urls_visited": []}
         
         translated = [SystemMessage(content=reflection_prompt)] + state[
             "messages"
@@ -69,9 +69,9 @@ class ResearchAgent(BaseAgent):
         res = self.llm.invoke(translated, {"configurable": {"thread_id": self.thread_id}})
         return {"messages": [HumanMessage(content=res.content)]}
 
-    def response_node(self, state: ResearchState) -> ResearchState:
+    def response_node(self, state: WebSearchState) -> WebSearchState:
         if not self.has_internet:
-            return {"messages":[HumanMessage(content="No internet for Research Agent. No research carried out.")], "urls_visited": []}
+            return {"messages":[HumanMessage(content="No internet for WebSearch Agent. No research carried out.")], "urls_visited": []}
 
         messages = state["messages"] + [SystemMessage(content=summarize_prompt)]
         response = self.llm.invoke(messages, {"configurable": {"thread_id": self.thread_id}})
@@ -94,35 +94,35 @@ class ResearchAgent(BaseAgent):
             return False
 
     def _initialize_agent(self):
-        self.graph = StateGraph(ResearchState)
+        self.graph = StateGraph(WebSearchState)
         self.graph.add_node(
-            "research",
+            "websearch",
             create_react_agent(
                 self.llm,
                 self.tools,
-                state_schema=ResearchState,
-                prompt=self.research_prompt,
+                state_schema=WebSearchState,
+                prompt=self.websearch_prompt,
             ),
         )
 
         self.graph.add_node("review", self.review_node)
         self.graph.add_node("response", self.response_node)
 
-        self.graph.add_edge(START, "research")
-        self.graph.add_edge("research", "review")
+        self.graph.add_edge(START, "websearch")
+        self.graph.add_edge("websearch", "review")
         self.graph.add_edge("response", END)
 
         self.graph.add_conditional_edges(
             "review",
             should_continue,
-            {"research": "research", "response": "response"},
+            {"websearch": "websearch", "response": "response"},
         )
         self.action = self.graph.compile(checkpointer=self.checkpointer)
-        # self.action.get_graph().draw_mermaid_png(output_file_path="./research_agent_graph.png", draw_method=MermaidDrawMethod.PYPPETEER)
+        # self.action.get_graph().draw_mermaid_png(output_file_path="./websearch_agent_graph.png", draw_method=MermaidDrawMethod.PYPPETEER)
     
     def run(self, prompt, recursion_limit=100):
         if not self.has_internet:
-            return {"messages":[HumanMessage(content="No internet for Research Agent. No research carried out.")]}
+            return {"messages":[HumanMessage(content="No internet for WebSearch Agent. No research carried out.")]}
         inputs = {
             "messages": [HumanMessage(content=prompt)],
             "model": self.llm,
@@ -158,25 +158,25 @@ search_tool = DuckDuckGoSearchResults(output_format="json", num_results=10)
 # search_tool = TavilySearchResults(max_results=10, search_depth="advanced",include_answer=True)
 
 
-def should_continue(state: ResearchState):
-    if len(state["messages"]) > (state.get("max_research_steps", 100) + 3):
+def should_continue(state: WebSearchState):
+    if len(state["messages"]) > (state.get("max_websearch_steps", 100) + 3):
         return "response"
     if "[APPROVED]" in state["messages"][-1].content:
         return "response"
-    return "research"
+    return "websearch"
 
 
 def main():
     model = ChatOpenAI(
         model="gpt-4o", max_tokens=10000, timeout=None, max_retries=2
     )
-    researcher = ResearchAgent(llm=model)
+    websearcher = WebSearchAgent(llm=model)
     problem_string = "Who are the 2025 Detroit Tigers top 10 prospects and what year were they born?"
     inputs = {
         "messages": [HumanMessage(content=problem_string)],
         "model": model,
     }
-    result = researcher.action.invoke(inputs, {"recursion_limit": 10000, "configurable": {"thread_id": self.thread_id}})
+    result = websearcher.action.invoke(inputs, {"recursion_limit": 10000, "configurable": {"thread_id": self.thread_id}})
 
     colors = [BLUE, RED]
     for ii, x in enumerate(result["messages"][:-1]):

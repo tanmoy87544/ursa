@@ -28,9 +28,9 @@ arxiv_agent = ArxivAgent(
     summarize=True,
     process_images=False,
     max_results=20,
-    database_path="database_materials1",
-    summaries_path="database_summaries_materials1",
-    vectorstore_path="vectorstores_materials1",
+    database_path="arxiv_papers_materials1",
+    summaries_path="arxiv_summaries_materials1",
+    vectorstore_path="arxiv_vectorstores_materials1",
     download_papers=True,
 )
 

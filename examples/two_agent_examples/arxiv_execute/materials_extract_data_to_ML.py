@@ -17,9 +17,9 @@ def main():
         summarize=True,
         process_images=False,
         max_results=40,
-        database_path="database_materials2",
-        summaries_path="database_summaries_materials2",
-        vectorstore_path="vectorstores_materials2",
+        database_path="arxiv_papers_materials2",
+        summaries_path="arxiv_summaries_materials2",
+        vectorstore_path="arxiv_vectorstores_materials2",
         download_papers=True,
     )
 

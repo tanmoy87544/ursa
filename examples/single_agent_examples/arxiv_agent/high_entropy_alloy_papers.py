@@ -22,16 +22,16 @@ def main():
     
     agent = ArxivAgent(llm=llm, summarize = True, process_images = False, 
                        max_results        = 100,   
-                       database_path      ='database',
-                       summaries_path     ='database_summaries', 
-                       vectorstore_path   ='vectorstores', 
+                       database_path      ='arxiv_HEA_papers',
+                       summaries_path     ='arxiv_HEA_summaries', 
+                       vectorstore_path   ='arxiv_HEA_vectorstores', 
                        download_papers    = True)
     
 
     t0 = time.time()
     
     result = agent.run(arxiv_search_query="High Entropy Alloys", 
-                       context="Find High entropy alloys suitable for application under extreme conditions")
+                       context="Find High entropy alloys suitable for application under extreme conditions. For candidates that you identify, provide the starting structure, crystal structure, lattice parameters, and space group.")
 
     t1 = time.time()
     
