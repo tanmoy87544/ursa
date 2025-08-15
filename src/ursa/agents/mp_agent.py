@@ -114,7 +114,6 @@ class MaterialsProjectAgent(BaseAgent):
         database_path: str = 'mp_database',
         summaries_path: str = 'mp_summaries',
         vectorstore_path: str = 'mp_vectorstores',
-        api_key: str = None,
         **kwargs
     ):
         super().__init__(llm, **kwargs)
@@ -123,7 +122,6 @@ class MaterialsProjectAgent(BaseAgent):
         self.database_path    = database_path
         self.summaries_path   = summaries_path
         self.vectorstore_path = vectorstore_path
-        self.api_key          = "REDACTED" #or os.getenv("REDACTED")
         
         os.makedirs(self.database_path,    exist_ok=True)
         os.makedirs(self.summaries_path,   exist_ok=True)
@@ -138,7 +136,7 @@ class MaterialsProjectAgent(BaseAgent):
         bg  = (f["band_gap_min"], f["band_gap_max"])
         e_above_hull = (0, 0)                # only on-hull (stable)
         mats = []
-        with MPRester(self.api_key) as mpr:
+        with MPRester() as mpr:
             # get ALL matching materials…
             all_results = mpr.materials.summary.search(
                 elements=els,
