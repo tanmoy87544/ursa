@@ -3,6 +3,8 @@ from pathlib import Path
 from typing import List, Sequence, Optional, Dict, Any
 
 from langchain_openai import OpenAIEmbeddings
+from langchain_google_genai import GoogleGenerativeAIEmbeddings
+
 from langchain_chroma import Chroma
 from langchain_core.documents import Document
 
@@ -38,6 +40,7 @@ class AgentMemory:
         self.path.mkdir(parents=True, exist_ok=True)
 
         # Embedding function
+        # self.embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
         self.embeddings = OpenAIEmbeddings(**(embedding_kwargs or {}))
 
         # If a DB already exists, load it; otherwise defer creation until `build_index`.
