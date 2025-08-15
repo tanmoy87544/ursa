@@ -1,16 +1,12 @@
 import sys
 
-from ursa.agents                              import ArxivAgent
-from langchain_openai                            import ChatOpenAI
+from ursa.agents       import ArxivAgent
+from langchain_litellm import ChatLiteLLM
 
 def main():
 
-    llm = ChatOpenAI(model      = "o3",
-                    max_tokens  = 10000,
-                    timeout     = None,
-                    max_retries =  2,
-                    )
-
+    llm = ChatLiteLLM(model="openai/o3",
+                      max_completion_tokens=20000)
 
     agent = ArxivAgent(llm=llm, summarize = True, process_images = True, 
                        max_results        = 3,   

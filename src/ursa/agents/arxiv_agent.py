@@ -18,15 +18,16 @@ from langchain_core.prompts import ChatPromptTemplate
 from langgraph.graph import StateGraph, END, START
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_chroma import Chroma
-from langchain_openai import OpenAIEmbeddings
 
 from openai import OpenAI
+from langchain_openai import OpenAIEmbeddings
+from langchain_google_genai import GoogleGenerativeAIEmbeddings
 
 from .base import BaseAgent
 
-
 client = OpenAI()
 
+# embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
 embeddings = OpenAIEmbeddings()
 
 class PaperMetadata(TypedDict):
@@ -42,6 +43,11 @@ class PaperState(TypedDict, total=False):
 
 
 def describe_image(image: Image.Image) -> str:
+<<<<<<< HEAD
+    if 'OpenAI' not in globals():
+        return ""
+=======
+>>>>>>> 9019dba9b1be2f28f1d699010bf23750bdf6e778
     buffered = BytesIO()
     image.save(buffered, format="PNG")
     img_base64 = base64.b64encode(buffered.getvalue()).decode()
