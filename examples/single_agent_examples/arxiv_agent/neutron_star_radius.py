@@ -8,7 +8,6 @@ def main():
     llm = ChatLiteLLM(model="openai/o3",
                       max_completion_tokens=20000)
 
-
     agent = ArxivAgent(llm=llm, summarize = True, process_images = True, 
                        max_results        = 3,   
                        database_path      ='arxiv_papers_neutron_star',

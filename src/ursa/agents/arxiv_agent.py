@@ -43,8 +43,11 @@ class PaperState(TypedDict, total=False):
 
 
 def describe_image(image: Image.Image) -> str:
+<<<<<<< HEAD
     if 'OpenAI' not in globals():
         return ""
+=======
+>>>>>>> 9019dba9b1be2f28f1d699010bf23750bdf6e778
     buffered = BytesIO()
     image.save(buffered, format="PNG")
     img_base64 = base64.b64encode(buffered.getvalue()).decode()
