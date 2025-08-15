@@ -1,8 +1,5 @@
-import sys
-
 from langchain_core.messages import HumanMessage
-from langchain_litellm import ChatLiteLLM
-from langchain_openai import OpenAIEmbeddings
+from langchain_ollama import ChatOllama, OllamaEmbeddings
 
 from ursa.agents import ExecutionAgent
 from ursa.util.memory_logger import AgentMemory
@@ -18,14 +15,19 @@ Optimize the six-hump camel function.
     Carry out the optimization and report the results.
 """
 
-model = ChatLiteLLM(
-    model="openai/o3",
-    max_tokens=30000,
+model = ChatOllama(
+    model="gpt-oss:20b",
+    base_url="http://thvor.trail.lanl.gov:11434",
+    num_ctx="12000",
 )
 
-embedding_kwargs = None
-embedding_model = OpenAIEmbeddings(**(embedding_kwargs or {}))
+embedding_model = OllamaEmbeddings(
+    model="nomic-embed-text:latest",
+    base_url="http://thvor.trail.lanl.gov:11434",
+)
+
 memory = AgentMemory(embedding_model=embedding_model)
+
 
 # Initialize the agent
 executor = ExecutionAgent(agent_memory=memory, llm=model)
