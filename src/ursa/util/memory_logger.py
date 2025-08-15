@@ -141,9 +141,7 @@ class AgentMemory:
         list[Document] | list[tuple[Document, float]]
         """
         if self.vectorstore is None:
-            raise RuntimeError(
-                "Vector store not initialised – call `build_index` first."
-            )
+            return ["None"]
 
         if with_scores:
             return self.vectorstore.similarity_search_with_score(

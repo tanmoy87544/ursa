@@ -3,6 +3,7 @@ import coolname
 
 from langchain_core.messages import HumanMessage, SystemMessage, AIMessage, ToolMessage
 from langchain_litellm import ChatLiteLLM
+from langchain_openai import OpenAIEmbeddings
 
 from ursa.agents import ArxivAgent, RecallAgent, BaseAgent, BaseChatModel
 from ursa.agents import ExecutionAgent, ExecutionState
@@ -64,6 +65,7 @@ arxiver = ArxivAgent(
     summarize=True,
     process_images=False,
     max_results=5,
+    rag_embedding=OpenAIEmbeddings(),
     database_path="database_neutron_star",
     summaries_path="database_summaries_neutron_star",
     vectorstore_path="vectorstores_neutron_star",
@@ -72,7 +74,7 @@ arxiver = ArxivAgent(
 
 executor = ExecutionAgent(llm=model)
 
-rememberer = RecallAgent(llm=model)
+rememberer = RecallAgent(llm=model,embedding=OpenAIEmbeddings())
 
 
 @tool
@@ -166,7 +168,7 @@ class CombinedAgent(BaseAgent):
     def summarize(self, state: ExecutionState) -> ExecutionState:
         messages = [SystemMessage(content=summarize_prompt)] + state["messages"]
         response = self.llm.invoke(messages, {"configurable": {"thread_id": self.thread_id}})
-        memory = AgentMemory()
+        memory = AgentMemory(embedding_model=OpenAIEmbeddings())
         memories = []
         # Handle looping through the messages
         for x in state["messages"]:

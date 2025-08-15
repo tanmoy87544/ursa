@@ -3,8 +3,11 @@ import os, sqlite3
 from pathlib import Path
 from langchain_core.messages import HumanMessage
 from langchain_litellm import ChatLiteLLM
-from ursa.agents import ArxivAgent, ExecutionAgent, PlanningAgent, WebSearchAgent, RecallAgent
 from langgraph.checkpoint.sqlite import SqliteSaver
+from langchain_openai import OpenAIEmbeddings
+
+from ursa.agents import ArxivAgent, ExecutionAgent, PlanningAgent, WebSearchAgent, RecallAgent
+from ursa.util.memory_logger   import AgentMemory
 
 header = """
 Testing a HITL version of URSA. Direct a prompt to either the:
@@ -41,15 +44,16 @@ def main():
         summarize=True,
         process_images=False,
         max_results=10,
+        rag_embedding=OpenAIEmbeddings,
         database_path="arxiv_downloaded_papers",
         summaries_path="arxiv_generated_summaries",
         vectorstore_path="arxiv_vectorstores",
         download_papers=True,
     )
-    executor    = ExecutionAgent(llm=model, checkpointer=executor_checkpointer)
+    executor    = ExecutionAgent(llm=model, checkpointer=executor_checkpointer, agent_memory=AgentMemory(embedding_model=OpenAIEmbeddings()))
     planner     = PlanningAgent(llm=model, checkpointer=planner_checkpointer)
     websearcher = WebSearchAgent(llm=model, checkpointer=websearcher_checkpointer)
-    rememberer  = RecallAgent(llm=model)
+    rememberer  = RecallAgent(llm=model, embedding=OpenAIEmbeddings())
 
     executor_state    = None
     planner_state     = None

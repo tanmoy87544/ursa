@@ -3,7 +3,7 @@ import time
 sys.path.append("../../.")
 
 from ursa.agents                              import ArxivAgent
-from langchain_openai                            import ChatOpenAI
+from langchain_openai                            import ChatOpenAI, OpenAIEmbeddings
 from langchain_community.callbacks.openai_info   import OpenAICallbackHandler
 
 
@@ -21,7 +21,8 @@ def main():
 
     
     agent = ArxivAgent(llm=llm, summarize = True, process_images = False, 
-                       max_results        = 10,   
+                       max_results        = 10,
+                       rag_embedding      = OpenAIEmbeddings(),
                        database_path      ='arxiv_HEA_papers',
                        summaries_path     ='arxiv_HEA_summaries', 
                        vectorstore_path   ='arxiv_HEA_vectorstores', 

@@ -2,10 +2,12 @@ import sys
 
 from langchain_core.messages import HumanMessage
 from langchain_litellm import ChatLiteLLM
+from langchain_openai import OpenAIEmbeddings
 
 from ursa.agents import ArxivAgent
 from ursa.agents import ExecutionAgent
 
+embeddings = OpenAIEmbeddings()
 
 def main():
     model = ChatLiteLLM(
@@ -18,6 +20,7 @@ def main():
         summarize=True,
         process_images=False,
         max_results=5,
+        rag_embedding=embeddings,
         database_path="arxiv_papers_neutron_star",
         summaries_path="arxiv_summaries_neutron_star",
         vectorstore_path="arxiv_vectorstores_neutron_star",

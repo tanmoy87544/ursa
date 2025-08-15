@@ -16,15 +16,9 @@ Optimize the six-hump camel function.
 """
 
 model = ChatOllama(
-    model="gpt-oss:20b",
-    base_url="http://thvor.trail.lanl.gov:11434",
-    num_ctx="12000",
-)
+    model="gpt-oss:20b")
 
-embedding_model = OllamaEmbeddings(
-    model="nomic-embed-text:latest",
-    base_url="http://thvor.trail.lanl.gov:11434",
-)
+embedding_model = OllamaEmbeddings(model="nomic-embed-text:latest")
 
 memory = AgentMemory(embedding_model=embedding_model)
 

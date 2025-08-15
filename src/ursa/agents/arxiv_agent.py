@@ -19,9 +19,6 @@ from langgraph.graph import StateGraph, END, START
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_chroma import Chroma
 
-from langchain_openai import OpenAIEmbeddings
-from langchain_google_genai import GoogleGenerativeAIEmbeddings
-
 from .base import BaseAgent
 
 try:
@@ -30,7 +27,7 @@ except:
     pass
 
 # embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
-embeddings = OpenAIEmbeddings()
+# embeddings = OpenAIEmbeddings()
 
 class PaperMetadata(TypedDict):
     arxiv_id: str
@@ -132,8 +129,6 @@ class ArxivAgent(BaseAgent):
 
         os.makedirs(self.summaries_path, exist_ok=True)
 
-        os.makedirs(self.vectorstore_path, exist_ok=True)
-
         
     def _fetch_papers(self, query: str) -> List[PaperMetadata]:
     
@@ -195,6 +190,7 @@ class ArxivAgent(BaseAgent):
 
     
     def _get_or_build_vectorstore(self, paper_text: str, arxiv_id: str):
+        os.makedirs(self.vectorstore_path, exist_ok=True)
         
         persist_directory = os.path.join(self.vectorstore_path, arxiv_id)
         

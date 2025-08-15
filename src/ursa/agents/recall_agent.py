@@ -4,10 +4,10 @@ from ..util.memory_logger import AgentMemory
 
 
 class RecallAgent(BaseAgent):
-    def __init__(self, llm="openai/o3-mini", **kwargs):
+    def __init__(self, llm, embedding, **kwargs):
         
         super().__init__(llm, **kwargs)
-        self.memorydb = AgentMemory()
+        self.memorydb = AgentMemory(embedding_model=embedding)
     
     def remember(self, query):
         memories = self.memorydb.retrieve(query)
