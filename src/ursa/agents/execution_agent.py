@@ -48,12 +48,14 @@ class ExecutionState(TypedDict):
 class ExecutionAgent(BaseAgent):
     def __init__(
         self,
+        agent_memory: AgentMemory,
         llm: str | BaseChatModel = "openai/gpt-4o-mini",
         log_history: bool = True,
         log_state: bool = False,
         **kwargs,
     ):
         super().__init__(llm, **kwargs)
+        self.agent_memory = agent_memory
         self.executor_prompt = executor_prompt
         self.summarize_prompt = summarize_prompt
         self.tools = [run_cmd, write_code, edit_code, search_tool]
@@ -126,7 +128,7 @@ class ExecutionAgent(BaseAgent):
         except ContentPolicyViolationError as e:
             print("Error: ", e, " ", messages[-1].content)
         if self.log_history:
-            memory = AgentMemory()
+            memory = self.agent_memory
             memories = []
             # Handle looping through the messages
             for x in state["messages"]:
