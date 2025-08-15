@@ -18,7 +18,7 @@ from oppenai.agents import ExecutionAgent
 from rich import get_console
 from rich.panel import Panel
 
-console = get_console()
+console = get_console() # always returns the same instance
 
 # Define the workspace
 workspace = "example_integer_sum"
