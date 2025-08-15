@@ -106,10 +106,14 @@ class AgentMemory:
             self.build_index(new_chunks, metadatas)
             print("----- Vector store initialised -----")
 
-        docs = [
-            Document(page_content=text, metadata=metadatas[i] if metadatas else {})
-            for i, text in enumerate(new_chunks)
-        ]
+        docs = []
+        for i, text in enumerate(new_chunks):
+            if len(text) > 0:  # only add non-empty documents
+                docs.append(
+                    Document(
+                        page_content=text, metadata=metadatas[i] if metadatas else {}
+                    )
+                )
         self.vectorstore.add_documents(docs)
 
     # --------------------------------------------------------------------- #
