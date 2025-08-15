@@ -5,7 +5,6 @@ from typing import Any, Dict, List, Optional, Sequence
 
 from langchain_chroma import Chroma
 from langchain_core.documents import Document
-from langchain_openai import OpenAIEmbeddings
 
 
 class AgentMemory:
@@ -19,21 +18,19 @@ class AgentMemory:
         ``agent_memory_db`` is created in the package’s base directory.
     collection_name : str
         Name of the Chroma collection.
-    embedding_kwargs : dict | None
-        Extra keyword arguments to pass to `OpenAIEmbeddings` (e.g. model name).
+    embedding_model : <TODO> | None
+        the embedding model
 
     Notes
     -----
     * Requires `langchain-openai`, `langchain-chroma`, and `chromadb`.
-    * Set the environment variable ``OPENAI_API_KEY`` (or pass
-      ``openai_api_key=...`` inside ``embedding_kwargs``).
     """
 
     def __init__(
         self,
+        embedding_model,
         path: Optional[str | Path] = None,
         collection_name: str = "agent_memory",
-        embedding_kwargs: Optional[Dict[str, Any]] = None,
     ) -> None:
         self.path = (
             Path(path) if path else Path(__file__).resolve().parent / "agent_memory_db"
@@ -41,8 +38,7 @@ class AgentMemory:
         self.collection_name = collection_name
         self.path.mkdir(parents=True, exist_ok=True)
 
-        # Embedding function
-        self.embeddings = OpenAIEmbeddings(**(embedding_kwargs or {}))
+        self.embeddings = embedding_model
 
         # If a DB already exists, load it; otherwise defer creation until `build_index`.
         self.vectorstore: Optional[Chroma] = None
