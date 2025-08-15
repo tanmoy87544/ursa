@@ -1,10 +1,12 @@
-import os, shutil
+import os
+import shutil
 from pathlib import Path
-from typing import List, Sequence, Optional, Dict, Any
+from typing import Any, Dict, List, Optional, Sequence
 
-from langchain_openai import OpenAIEmbeddings
 from langchain_chroma import Chroma
 from langchain_core.documents import Document
+from langchain_openai import OpenAIEmbeddings
+
 
 class AgentMemory:
     """
@@ -33,7 +35,9 @@ class AgentMemory:
         collection_name: str = "agent_memory",
         embedding_kwargs: Optional[Dict[str, Any]] = None,
     ) -> None:
-        self.path = Path(path) if path else Path(__file__).resolve().parent / "agent_memory_db"
+        self.path = (
+            Path(path) if path else Path(__file__).resolve().parent / "agent_memory_db"
+        )
         self.collection_name = collection_name
         self.path.mkdir(parents=True, exist_ok=True)
 
@@ -137,11 +141,16 @@ class AgentMemory:
         list[Document] | list[tuple[Document, float]]
         """
         if self.vectorstore is None:
-            raise RuntimeError("Vector store not initialised – call `build_index` first.")
+            raise RuntimeError(
+                "Vector store not initialised – call `build_index` first."
+            )
 
         if with_scores:
-            return self.vectorstore.similarity_search_with_score(query, k=k, **search_kwargs)
+            return self.vectorstore.similarity_search_with_score(
+                query, k=k, **search_kwargs
+            )
         return self.vectorstore.similarity_search(query, k=k, **search_kwargs)
+
 
 def delete_database(path: Optional[str | Path] = None):
     """
@@ -154,10 +163,11 @@ def delete_database(path: Optional[str | Path] = None):
         ``agent_memory_db`` is created in the package’s base directory.
     """
 
-    db_path = Path(path) if path else Path(__file__).resolve().parent / "agent_memory_db"
+    db_path = (
+        Path(path) if path else Path(__file__).resolve().parent / "agent_memory_db"
+    )
     if os.path.exists(db_path):
         shutil.rmtree(db_path)
         print(f"Database: {db_path} has been deleted.")
     else:
         print("No database found to delete.")
-    
