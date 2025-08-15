@@ -5,6 +5,6 @@ from .code_review_agent       import   CodeReviewAgent,   CodeReviewState
 from .hypothesizer_agent      import HypothesizerAgent, HypothesizerState
 from .arxiv_agent             import ArxivAgent, PaperState, PaperMetadata
 from .recall_agent            import RecallAgent
-from .mp_agent                import MaterialsProjectAgent
 from .base                    import BaseAgent, BaseChatModel
+from .mp_agent                import MaterialsProjectAgent
 
