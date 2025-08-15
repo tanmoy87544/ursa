@@ -1,22 +1,18 @@
 import sys
 
-from ursa.agents                              import ArxivAgent
-from langchain_openai                            import ChatOpenAI
+from ursa.agents       import ArxivAgent
+from langchain_litellm import ChatLiteLLM
 
 def main():
 
-    llm = ChatOpenAI(model      = "o3-mini",
-                    max_tokens  = 10000,
-                    timeout     = None,
-                    max_retries =  2,
-                    )
-
+    llm = ChatLiteLLM(model="openai/o3",
+                      max_completion_tokens=20000)
 
     agent = ArxivAgent(llm=llm, summarize = True, process_images = True, 
                        max_results        = 3,   
-                       database_path      ='database_neutron_star',
-                       summaries_path     ='database_summaries_neutron_star', 
-                       vectorstore_path   ='vectorstores_neutron_star', 
+                       database_path      ='arxiv_papers_neutron_star',
+                       summaries_path     ='arxiv_summaries_neutron_star', 
+                       vectorstore_path   ='arxiv_vectorstores_neutron_star', 
                        download_papers    = True)
 
     

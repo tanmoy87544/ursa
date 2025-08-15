@@ -10,18 +10,21 @@ from langchain_community.tools import (
     # TavilySearchResults,
 )
 from langchain_core.language_models import BaseChatModel
-from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage
+from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage, AIMessage
 from langchain_core.tools import tool, InjectedToolCallId
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.message import add_messages
 from langgraph.prebuilt import InjectedState, ToolNode
 from typing_extensions import TypedDict
 from langgraph.types import Command
+from pathlib import Path
 
 from litellm import ContentPolicyViolationError
 from ..prompt_library.execution_prompts import executor_prompt, summarize_prompt
 from .base import BaseAgent
 from ..util.diff_renderer import DiffRenderer
+
+from ..util.memory_logger import AgentMemory
 
 # Rich
 from rich import get_console
@@ -43,11 +46,11 @@ class ExecutionState(TypedDict):
     current_progress: str
     code_files: list[str]
     workspace: str
-
+    symlinkdir: dict
 
 class ExecutionAgent(BaseAgent):
     def __init__(
-        self, llm: str | BaseChatModel = "openai/gpt-4o-mini", **kwargs
+        self, llm: str | BaseChatModel = "openai/gpt-4o-mini", log_history:bool = True, log_state: bool = False, **kwargs
     ):
         super().__init__(llm, **kwargs)
         self.executor_prompt = executor_prompt
@@ -55,6 +58,8 @@ class ExecutionAgent(BaseAgent):
         self.tools = [run_cmd, write_code, edit_code, search_tool]
         self.tool_node = ToolNode(self.tools)
         self.llm = self.llm.bind_tools(self.tools)
+        self.log_state = log_state
+        self.log_history = log_history
 
         self._initialize_agent()
 
@@ -67,6 +72,32 @@ class ExecutionAgent(BaseAgent):
                 f"{RED}Creating the folder {BLUE}{BOLD}{new_state['workspace']}{RESET}{RED} for this project.{RESET}"
             )
         os.makedirs(new_state["workspace"], exist_ok=True)
+
+        # code related to symlink
+        if "symlinkdir" in new_state.keys() and "is_linked" not in new_state["symlinkdir"].keys():
+            # symlinkdir = {"source": "foo", "dest": "bar"}
+            symlinkdir = new_state["symlinkdir"]
+            # user provided a symlinkdir key - let's do the linking!
+
+            src = Path(symlinkdir["source"]).expanduser().resolve()
+            workspace_root = Path(new_state["workspace"]).expanduser().resolve()
+            dst = workspace_root / symlinkdir["dest"]          # prepend workspace
+
+            # if you want to replace an existing link/file, unlink it first
+            if dst.exists() or dst.is_symlink():
+                dst.unlink()
+
+            # create parent dirs for the link location if they don’t exist
+            dst.parent.mkdir(parents=True, exist_ok=True)
+
+            # actually make the link (tell pathlib it’s a directory target)
+            dst.symlink_to(src, target_is_directory=src.is_dir())
+            print(
+                f"{RED}Symlinked {src} (source) --> {dst} (dest)"
+            )
+            # note that we've done the symlink now, so don't need to do it later
+            new_state["symlinkdir"]["is_linked"] = True
+
         
         if type(new_state["messages"][0]) == SystemMessage:
             new_state["messages"][0] = SystemMessage(
@@ -77,12 +108,11 @@ class ExecutionAgent(BaseAgent):
                 SystemMessage(content=self.executor_prompt)
             ] + state["messages"]
         try:
-            # aaa = self.action.get_state({"configurable": {"thread_id": self.thread_id}}).values["messages"]
-            # for aa in aaa:
-            #     print(aa)
             response = self.llm.invoke(new_state["messages"], {"configurable": {"thread_id": self.thread_id}})
         except ContentPolicyViolationError as e:
             print("Error: ", e, " ",new_state["messages"][-1].content)
+        if self.log_state:
+            self.write_state("execution_agent.json", new_state)
         return {"messages": [response], "workspace": new_state["workspace"]}
 
     # Define the function that calls the model
@@ -92,6 +122,29 @@ class ExecutionAgent(BaseAgent):
             response = self.llm.invoke(messages, {"configurable": {"thread_id": self.thread_id}})
         except ContentPolicyViolationError as e:
             print("Error: ", e, " ",messages[-1].content)
+        if self.log_history:
+            memory = AgentMemory()
+            memories = []
+            # Handle looping through the messages
+            for x in state["messages"]:
+                if not type(x) == AIMessage:
+                    memories.append(x.content)
+                elif not x.tool_calls:
+                    memories.append(x.content)
+                else:
+                    tool_strings = []
+                    for tool in x.tool_calls:
+                        tool_name = "Tool Name: " + tool["name"]
+                        tool_strings.append(tool_name)
+                        for y in tool["args"]:
+                            tool_strings.append(f'Arg: {str(y)}\nValue: {str(tool["args"][y])}')
+                    memories.append("\n".join(tool_strings))
+            memories.append(response.content)
+            memory.add_memories(memories)
+            save_state = state.copy()
+            save_state["messages"].append(response)
+        if self.log_state:
+            self.write_state("execution_agent.json", save_state)
         return {"messages": [response.content]}
 
     # Define the function that calls the model
@@ -131,6 +184,9 @@ class ExecutionAgent(BaseAgent):
                     For reason: {safety_check.content}
                     """
                     console.print("[bold red][WARNING][/bold red] Command deemed unsafe:", query)
+                    # and tell the user the reason
+                    console.print("[bold red][WARNING][/bold red] REASON:", tool_response)
+
                 else:
                     tool_response = f"Command `{query}` passed safety check."
                     console.print(f"[green]Command passed safety check:[/green] {query}")

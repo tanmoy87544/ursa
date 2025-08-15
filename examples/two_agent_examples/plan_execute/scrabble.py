@@ -8,12 +8,12 @@ from langgraph.checkpoint.sqlite import SqliteSaver
 from ursa.agents import ExecutionAgent, PlanningAgent
 
 # rich console stuff for beautification
-from rich.console import Console
+from rich import get_console
 from rich.panel import Panel
 from rich.progress import BarColumn, Progress, SpinnerColumn, TextColumn
 from rich.text import Text
 
-console = Console()  # global console object
+console = get_console() # always returns the same instance
 
 
 def main(mode: str):
@@ -49,7 +49,7 @@ def main(mode: str):
 
         # 2. LLM & agents
         model = ChatLiteLLM(
-            model="openai/o3-mini"
+            model="openai/o3"
             # model="openai/o1"
             if mode == "prod"
             else "ollama_chat/llama3.1:8b",

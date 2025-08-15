@@ -3,15 +3,15 @@ import os, sqlite3
 from pathlib import Path
 from langchain_core.messages import HumanMessage
 from langchain_litellm import ChatLiteLLM
-from ursa.agents import ArxivAgent, ExecutionAgent, PlanningAgent, ResearchAgent
+from ursa.agents import ArxivAgent, ExecutionAgent, PlanningAgent, WebSearchAgent, RecallAgent
 from langgraph.checkpoint.sqlite import SqliteSaver
 
 header = """
 Testing a HITL version of URSA. Direct a prompt to either the:
-[Arxiver], [Executor], [Planner], [Researcher], [Chatter]
+[Arxiver], [Executor], [Planner], [WebSearcher], [Chatter]
 
 The agent will get your prompt, the output of the last agent (if any), and their previous history.
-when done use the escape key [USER DONE].
+when done use the escape indicator [USER DONE].
 """
 def main():
     workspace = "hitl_example"
@@ -26,14 +26,14 @@ def main():
     pconn = sqlite3.connect(str(pdb_path), check_same_thread=False)
     planner_checkpointer = SqliteSaver(pconn)
 
-    rdb_path = Path(workspace) / "researcher_checkpoint.db"
+    rdb_path = Path(workspace) / "websearcher_checkpoint.db"
     rdb_path.parent.mkdir(parents=True, exist_ok=True)
     rconn = sqlite3.connect(str(rdb_path), check_same_thread=False)
-    researcher_checkpointer = SqliteSaver(rconn)
+    websearcher_checkpointer = SqliteSaver(rconn)
 
     model = ChatLiteLLM(
-        model="openai/o3",
-        max_tokens=50000,
+        model="openai/gpt-5",
+        max_completion_tokens=50000,
     )
 
     arxiv_agent = ArxivAgent(
@@ -41,19 +41,20 @@ def main():
         summarize=True,
         process_images=False,
         max_results=10,
-        database_path="database_hitl",
-        summaries_path="database_summaries_hitl",
-        vectorstore_path="vectorstores_hitl",
+        database_path="arxiv_downloaded_papers",
+        summaries_path="arxiv_generated_summaries",
+        vectorstore_path="arxiv_vectorstores",
         download_papers=True,
     )
-    executor   = ExecutionAgent(llm=model, checkpointer=executor_checkpointer)
-    planner    = PlanningAgent(llm=model, checkpointer=planner_checkpointer)
-    researcher = ResearchAgent(llm=model, checkpointer=researcher_checkpointer)
+    executor    = ExecutionAgent(llm=model, checkpointer=executor_checkpointer)
+    planner     = PlanningAgent(llm=model, checkpointer=planner_checkpointer)
+    websearcher = WebSearchAgent(llm=model, checkpointer=websearcher_checkpointer)
+    rememberer  = RecallAgent(llm=model)
 
-    executor_state   = None
-    planner_state    = None
-    researcher_state = None
-    arxiv_state      = None
+    executor_state    = None
+    planner_state     = None
+    websearcher_state = None
+    arxiv_state       = None
 
     done = False
     last_agent_result = ""
@@ -114,22 +115,27 @@ def main():
             print(f"[Planner Agent Output]:\n {last_agent_result}")
             continue
 
-        if "[Researcher]" in user_prompt:
-            if researcher_state:
-                researcher_state["messages"].append(HumanMessage(f"The last agent output was: {last_agent_result}\n The user stated: {user_prompt}"))
-                researcher_state = researcher.action.invoke(researcher_state, {
+        if "[WebSearcher]" in user_prompt:
+            if websearcher_state:
+                websearcher_state["messages"].append(HumanMessage(f"The last agent output was: {last_agent_result}\n The user stated: {user_prompt}"))
+                websearcher_state = websearcher.action.invoke(websearcher_state, {
                         "recursion_limit": 999999,
-                        "configurable": {"thread_id": researcher.thread_id},
+                        "configurable": {"thread_id": websearcher.thread_id},
                     })
-                last_agent_result = researcher_state["messages"][-1].content
+                last_agent_result = websearcher_state["messages"][-1].content
             else:
-                researcher_state = {"messages":[HumanMessage(f"The last agent output was: {last_agent_result}\n The user stated: {user_prompt}")]}
-                researcher_state = researcher.action.invoke(researcher_state, {
+                websearcher_state = {"messages":[HumanMessage(f"The last agent output was: {last_agent_result}\n The user stated: {user_prompt}")]}
+                websearcher_state = websearcher.action.invoke(websearcher_state, {
                         "recursion_limit": 999999,
-                        "configurable": {"thread_id": researcher.thread_id},
+                        "configurable": {"thread_id": websearcher.thread_id},
                     })
-                last_agent_result = researcher_state["messages"][-1].content
+                last_agent_result = websearcher_state["messages"][-1].content
             print(f"[Planner Agent Output]:\n {last_agent_result}")
+            continue
+
+        if "[Rememberer]" in user_prompt:
+            memory_output = rememberer.remember(user_prompt)
+            print(f"[Rememberer Output]:\n {memory_output}")
             continue
 
         if "[Chatter]" in user_prompt:

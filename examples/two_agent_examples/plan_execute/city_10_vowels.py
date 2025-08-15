@@ -12,7 +12,7 @@ def main(mode: str):
         # Define a simple problem
         problem = "Find a city with as least 10 vowels in its name."
         model = ChatLiteLLM(
-            model="openai/o3-mini"
+            model="openai/o3"
             if mode == "prod"
             else "ollama_chat/llama3.1:8b",
             max_tokens=10000 if mode == "prod" else 4000,

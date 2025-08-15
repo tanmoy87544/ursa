@@ -30,9 +30,9 @@ When initializing `ArxivAgent`, you can customize its behavior with these parame
 | `summarize` | bool | True | Whether to summarize the papers or just fetch them |
 | `process_images` | bool | True | Whether to extract and describe images from papers |
 | `max_results` | int | 3 | Maximum number of papers to fetch from arXiv |
-| `database_path` | str | 'database' | Directory to store downloaded PDFs |
-| `summaries_path` | str | 'database_summaries' | Directory to store paper summaries |
-| `vectorstore_path` | str | 'vectorstores' | Directory to store vector embeddings |
+| `database_path` | str | 'arxiv_papers' | Directory to store downloaded PDFs |
+| `summaries_path` | str | 'arxiv_generated_summaries' | Directory to store paper summaries |
+| `vectorstore_path` | str | 'arxiv_vectorstores' | Directory to store vector embeddings |
 | `download_papers` | bool | True | Whether to download papers or use existing ones |
 
 ## Advanced Usage
