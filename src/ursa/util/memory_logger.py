@@ -1,3 +1,4 @@
+import os, shutil
 from pathlib import Path
 from typing import List, Sequence, Optional, Dict, Any
 
@@ -141,3 +142,22 @@ class AgentMemory:
         if with_scores:
             return self.vectorstore.similarity_search_with_score(query, k=k, **search_kwargs)
         return self.vectorstore.similarity_search(query, k=k, **search_kwargs)
+
+def delete_database(path: Optional[str | Path] = None):
+    """
+    Simple wrapper around a persistent Chroma vector-store for agent-conversation memory.
+
+    Parameters
+    ----------
+    path : str | Path | None
+        Where the on-disk Chroma DB is for deleting.  If *None*, a folder called
+        ``agent_memory_db`` is created in the package’s base directory.
+    """
+
+    db_path = Path(path) if path else Path(__file__).resolve().parent / "agent_memory_db"
+    if os.path.exists(db_path):
+        shutil.rmtree(db_path)
+        print(f"Database: {db_path} has been deleted.")
+    else:
+        print("No database found to delete.")
+    
