@@ -49,7 +49,7 @@ def main(mode: str):
 
         # 2. LLM & agents
         model = ChatLiteLLM(
-            model="openai/o3-mini"
+            model="openai/o3"
             # model="openai/o1"
             if mode == "prod"
             else "ollama_chat/llama3.1:8b",

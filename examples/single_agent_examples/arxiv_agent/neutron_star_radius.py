@@ -5,7 +5,7 @@ from langchain_openai                            import ChatOpenAI
 
 def main():
 
-    llm = ChatOpenAI(model      = "o3-mini",
+    llm = ChatOpenAI(model      = "o3",
                     max_tokens  = 10000,
                     timeout     = None,
                     max_retries =  2,
