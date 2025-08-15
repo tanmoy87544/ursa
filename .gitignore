@@ -17,3 +17,6 @@ wheels/
 .venv/
 workspace/
 workspace_*/
+
+# ursa
+src/ursa/util/agent_memory_db/
