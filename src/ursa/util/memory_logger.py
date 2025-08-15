@@ -23,7 +23,7 @@ class AgentMemory:
 
     Notes
     -----
-    * Requires `langchain-openai`, `langchain-chroma`, and `chromadb`.
+    * Requires `langchain-chroma`, and `chromadb`.
     """
 
     def __init__(

@@ -1,11 +1,11 @@
-# Running on Ollama
+# Running with ChatOllama
 
 Disable OPENAI_API_KEY by setting the following two env variales:
 (without both of these env vars ollama complains about auth)
 
 ```
 $ export OPENAI_API_KEY=ollama
-$ export OPENAI_BASE_URL=http://local.endpoint.lanl.gov:11434/v1
+$ export OPENAI_BASE_URL=<YOUR OLLAMA ENDPOINT>
 ```
 
 Example Auth Error

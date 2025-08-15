@@ -3,7 +3,7 @@ import os
 # from langchain_core.runnables.graph import MermaidDrawMethod
 import subprocess
 from pathlib import Path
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal, Optional
 
 import coolname
 from langchain_community.tools import DuckDuckGoSearchResults  # TavilySearchResults,
@@ -48,9 +48,8 @@ class ExecutionState(TypedDict):
 class ExecutionAgent(BaseAgent):
     def __init__(
         self,
-        agent_memory: AgentMemory,
         llm: str | BaseChatModel = "openai/gpt-4o-mini",
-        log_history: bool = True,
+        agent_memory: Optional [Any | AgentMemory] = None,
         log_state: bool = False,
         **kwargs,
     ):
@@ -62,7 +61,6 @@ class ExecutionAgent(BaseAgent):
         self.tool_node = ToolNode(self.tools)
         self.llm = self.llm.bind_tools(self.tools)
         self.log_state = log_state
-        self.log_history = log_history
 
         self._initialize_agent()
 
@@ -127,8 +125,7 @@ class ExecutionAgent(BaseAgent):
             )
         except ContentPolicyViolationError as e:
             print("Error: ", e, " ", messages[-1].content)
-        if self.log_history:
-            memory = self.agent_memory
+        if self.agent_memory:
             memories = []
             # Handle looping through the messages
             for x in state["messages"]:
@@ -147,7 +144,7 @@ class ExecutionAgent(BaseAgent):
                             )
                     memories.append("\n".join(tool_strings))
             memories.append(response.content)
-            memory.add_memories(memories)
+            self.agent_memory.add_memories(memories)
             save_state = state.copy()
             save_state["messages"].append(response)
         if self.log_state:

@@ -19,13 +19,15 @@ from langgraph.graph import StateGraph, END, START
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_chroma import Chroma
 
-from openai import OpenAI
 from langchain_openai import OpenAIEmbeddings
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 
 from .base import BaseAgent
 
-client = OpenAI()
+try:
+    from openai import OpenAI
+except:
+    pass
 
 # embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
 embeddings = OpenAIEmbeddings()
@@ -43,11 +45,11 @@ class PaperState(TypedDict, total=False):
 
 
 def describe_image(image: Image.Image) -> str:
-<<<<<<< HEAD
     if 'OpenAI' not in globals():
+        print("Vision transformer for summarizing images currently only implemented for OpenAI API.")
         return ""
-=======
->>>>>>> 9019dba9b1be2f28f1d699010bf23750bdf6e778
+    client = OpenAI()
+    
     buffered = BytesIO()
     image.save(buffered, format="PNG")
     img_base64 = base64.b64encode(buffered.getvalue()).decode()
@@ -103,11 +105,16 @@ def remove_surrogates(text: str) -> str:
 
 
 class ArxivAgent(BaseAgent):
-    def __init__(self, llm="openai/o3-mini", summarize: bool = True, process_images = True, max_results: int = 3,
+    def __init__(self, 
+                 llm="openai/o3-mini", 
+                 summarize: bool = True, 
+                 process_images = True, 
+                 max_results: int = 3, 
+                 download_papers: bool = True, 
+                 rag_embedding         = None,
                  database_path      ='arxiv_papers', 
                  summaries_path     ='arxiv_generated_summaries', 
-                 vectorstore_path   ='arxiv_vectorstores', 
-                 download_papers: bool = True, **kwargs):
+                 vectorstore_path   ='arxiv_vectorstores',**kwargs):
         
         super().__init__(llm, **kwargs)
         self.summarize        = summarize
@@ -117,6 +124,7 @@ class ArxivAgent(BaseAgent):
         self.summaries_path   = summaries_path
         self.vectorstore_path = vectorstore_path
         self.download_papers  = download_papers
+        self.rag_embedding    = rag_embedding
         
         self.graph = self._build_graph()
 
@@ -191,11 +199,11 @@ class ArxivAgent(BaseAgent):
         persist_directory = os.path.join(self.vectorstore_path, arxiv_id)
         
         if os.path.exists(persist_directory):
-            vectorstore = Chroma(persist_directory=persist_directory, embedding_function=embeddings)
+            vectorstore = Chroma(persist_directory=persist_directory, embedding_function=self.rag_embedding)
         else:
             splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
             docs = splitter.create_documents([paper_text])
-            vectorstore = Chroma.from_documents(docs, embeddings, persist_directory=persist_directory)
+            vectorstore = Chroma.from_documents(docs, self.rag_embedding, persist_directory=persist_directory)
             
         return vectorstore.as_retriever(search_kwargs={"k": 5})
          
@@ -221,17 +229,20 @@ class ArxivAgent(BaseAgent):
             
             try:
                 cleaned_text = remove_surrogates(paper["full_text"])
-                retriever = self._get_or_build_vectorstore(cleaned_text, arxiv_id)
+                if self.rag_embedding:
+                    retriever = self._get_or_build_vectorstore(cleaned_text, arxiv_id)
 
-                relevant_docs_with_scores = retriever.vectorstore.similarity_search_with_score(state["context"], k=5)
+                    relevant_docs_with_scores = retriever.vectorstore.similarity_search_with_score(state["context"], k=5)
 
-                if relevant_docs_with_scores:
-                    score = sum([s for _, s in relevant_docs_with_scores]) / len(relevant_docs_with_scores)
-                    relevancy_scores[i] = abs(1.0 - score)
+                    if relevant_docs_with_scores:
+                        score = sum([s for _, s in relevant_docs_with_scores]) / len(relevant_docs_with_scores)
+                        relevancy_scores[i] = abs(1.0 - score)
+                    else:
+                        relevancy_scores[i] = 0.0
+                        
+                    retrieved_content = "\n\n".join([doc.page_content for doc, _ in relevant_docs_with_scores])
                 else:
-                    relevancy_scores[i] = 0.0
-                    
-                retrieved_content = "\n\n".join([doc.page_content for doc, _ in relevant_docs_with_scores])
+                    retrieved_content = cleaned_text
                 
                 summary = chain.invoke({"retrieved_content": retrieved_content, "context": state["context"]})
                 
