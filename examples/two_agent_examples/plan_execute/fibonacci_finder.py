@@ -13,7 +13,7 @@ from langchain_core.messages import HumanMessage
 from langchain_litellm import ChatLiteLLM
 from langgraph.checkpoint.sqlite import SqliteSaver
 
-from oppenai.agents import ExecutionAgent, PlanningAgent
+from ursa.agents import ExecutionAgent, PlanningAgent
 
 from rich import get_console
 from rich.panel import Panel
