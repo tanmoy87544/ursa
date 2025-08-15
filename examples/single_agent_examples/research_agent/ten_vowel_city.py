@@ -8,7 +8,7 @@ from ursa.agents import WebSearchAgent
 problem = "Find a city with as least 10 vowels in its name."
 
 # Choose the LLM and
-model = ChatLiteLLM(model="openai/o3-mini", max_tokens=20000)
+model = ChatLiteLLM(model="openai/gpt-5", max_completion_tokens=20000)
 
 # Initialize the agent
 websearcher = WebSearchAgent(llm=model)

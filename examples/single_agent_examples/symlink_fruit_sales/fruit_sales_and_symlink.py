@@ -20,7 +20,7 @@ console = Console()  # global console object
 
 # notice the symlink example demonstrate a source and dest dir not having the same
 # name - simple, but just want to draw attention to that
-symlinkdict = {"source" : "examples/single_agent_examples/symlink_fruit_sales/data_dir", "dest" : "data" }
+symlinkdict = {"source" : "./data_dir", "dest" : "data" }
 
 problem = (
 # notice below we refer to the destination dir 'data' where we expect the working

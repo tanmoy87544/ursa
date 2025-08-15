@@ -12,7 +12,7 @@ def main():
     callback_handler = OpenAICallbackHandler()
 
 
-    llm = ChatOpenAI(model      = "o3-mini",
+    llm = ChatOpenAI(model      = "o3",
                     max_tokens  = 10000,
                     timeout     = None,
                     max_retries =  2,
@@ -21,7 +21,7 @@ def main():
 
     
     agent = ArxivAgent(llm=llm, summarize = True, process_images = False, 
-                       max_results        = 100,   
+                       max_results        = 10,   
                        database_path      ='arxiv_HEA_papers',
                        summaries_path     ='arxiv_HEA_summaries', 
                        vectorstore_path   ='arxiv_HEA_vectorstores', 
