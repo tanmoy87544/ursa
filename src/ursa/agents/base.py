@@ -1,7 +1,9 @@
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_litellm import ChatLiteLLM
 from langgraph.checkpoint.base import BaseCheckpointSaver
+from langchain_core.load import dumps
 
+import json
 
 class BaseAgent:
     # llm: BaseChatModel
@@ -33,3 +35,8 @@ class BaseAgent:
 
         self.checkpointer = checkpointer
         self.thread_id = self.__class__.__name__
+    
+    def write_state(self, filename, state):
+        json_state = dumps(state, ensure_ascii=False)
+        with open(filename, "w") as f:
+            f.write(json_state)
