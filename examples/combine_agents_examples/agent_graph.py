@@ -8,6 +8,7 @@ from langchain_openai import OpenAIEmbeddings
 from ursa.agents import ArxivAgent, RecallAgent, BaseAgent, BaseChatModel
 from ursa.agents import ExecutionAgent, ExecutionState
 from ursa.prompt_library.execution_prompts import summarize_prompt
+from ursa.util.memory_logger import AgentMemory
 
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.message import add_messages
@@ -16,8 +17,6 @@ from langchain_core.tools import tool
 
 from typing import Annotated, Literal
 from typing_extensions import TypedDict
-
-from ursa.util.memory_logger import AgentMemory
 
 # --- ANSI color codes ---
 GREEN = "\033[92m"
@@ -59,13 +58,15 @@ model = ChatLiteLLM(
     model="openai/o3",
     max_tokens=50000,
 )
+embedding = OpenAIEmbeddings()
+memory = AgentMemory(embedding_model=embedding)
 
 arxiver = ArxivAgent(
     llm=model,
     summarize=True,
     process_images=False,
     max_results=5,
-    rag_embedding=OpenAIEmbeddings(),
+    rag_embedding=embedding,
     database_path="database_neutron_star",
     summaries_path="database_summaries_neutron_star",
     vectorstore_path="vectorstores_neutron_star",
@@ -74,7 +75,7 @@ arxiver = ArxivAgent(
 
 executor = ExecutionAgent(llm=model)
 
-rememberer = RecallAgent(llm=model,embedding=OpenAIEmbeddings())
+rememberer = RecallAgent(llm=model,memory=memory)
 
 
 @tool
@@ -168,7 +169,6 @@ class CombinedAgent(BaseAgent):
     def summarize(self, state: ExecutionState) -> ExecutionState:
         messages = [SystemMessage(content=summarize_prompt)] + state["messages"]
         response = self.llm.invoke(messages, {"configurable": {"thread_id": self.thread_id}})
-        memory = AgentMemory(embedding_model=OpenAIEmbeddings())
         memories = []
         # Handle looping through the messages
         for x in state["messages"]:

@@ -1,13 +1,12 @@
 import os
 from .base import BaseAgent
-from ..util.memory_logger import AgentMemory
 
 
 class RecallAgent(BaseAgent):
-    def __init__(self, llm, embedding, **kwargs):
+    def __init__(self, llm, memory, **kwargs):
         
         super().__init__(llm, **kwargs)
-        self.memorydb = AgentMemory(embedding_model=embedding)
+        self.memorydb = memory
     
     def remember(self, query):
         memories = self.memorydb.retrieve(query)

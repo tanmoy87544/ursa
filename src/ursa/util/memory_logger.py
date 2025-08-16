@@ -162,7 +162,7 @@ def delete_database(path: Optional[str | Path] = None):
     """
 
     db_path = (
-        Path(path) if path else Path(__file__).resolve().parent / "agent_memory_db"
+        Path(path) if path else Path("~/.cache/ursa/rag/db/")
     )
     if os.path.exists(db_path):
         shutil.rmtree(db_path)

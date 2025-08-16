@@ -38,22 +38,25 @@ def main():
         model="openai/gpt-5",
         max_completion_tokens=50000,
     )
+    embedding = OpenAIEmbeddings()
 
     arxiv_agent = ArxivAgent(
         llm=model,
         summarize=True,
         process_images=False,
         max_results=10,
-        rag_embedding=OpenAIEmbeddings,
+        rag_embedding=embedding,
         database_path="arxiv_downloaded_papers",
         summaries_path="arxiv_generated_summaries",
         vectorstore_path="arxiv_vectorstores",
         download_papers=True,
     )
-    executor    = ExecutionAgent(llm=model, checkpointer=executor_checkpointer, agent_memory=AgentMemory(embedding_model=OpenAIEmbeddings()))
+    memory      = AgentMemory(embedding_model=OpenAIEmbeddings())
+    
+    executor    = ExecutionAgent(llm=model, checkpointer=executor_checkpointer, agent_memory=memory)
     planner     = PlanningAgent(llm=model, checkpointer=planner_checkpointer)
     websearcher = WebSearchAgent(llm=model, checkpointer=websearcher_checkpointer)
-    rememberer  = RecallAgent(llm=model, embedding=OpenAIEmbeddings())
+    rememberer  = RecallAgent(llm=model, memory=memory)
 
     executor_state    = None
     planner_state     = None
