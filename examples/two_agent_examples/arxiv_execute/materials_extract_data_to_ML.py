@@ -5,10 +5,6 @@ from langchain_core.messages import HumanMessage
 from langchain_litellm import ChatLiteLLM
 from ursa.agents import ArxivAgent
 from ursa.agents import ExecutionAgent
-from langchain_openai import OpenAIEmbeddings
-
-embeddings = OpenAIEmbeddings()
-
 
 def main():
     model = ChatLiteLLM(
@@ -21,7 +17,6 @@ def main():
         summarize=True,
         process_images=False,
         max_results=40,
-        rag_embedding=embeddings,
         database_path="arxiv_papers_materials2",
         summaries_path="arxiv_summaries_materials2",
         vectorstore_path="arxiv_vectorstores_materials2",
@@ -45,7 +40,7 @@ def main():
 
     init = {"messages": [HumanMessage(content=exe_plan)]}
 
-    final_results = executor.action.invoke(init)
+    final_results = executor.action.invoke(init, {"recursion_limit":10000})
 
     for x in final_results["messages"]:
         print(x.content)

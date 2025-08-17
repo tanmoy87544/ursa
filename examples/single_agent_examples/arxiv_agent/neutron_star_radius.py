@@ -2,9 +2,6 @@ import sys
 
 from ursa.agents       import ArxivAgent
 from langchain_litellm import ChatLiteLLM
-from langchain_openai  import OpenAIEmbeddings
-
-embeddings = OpenAIEmbeddings()
 
 def main():
 
@@ -12,7 +9,7 @@ def main():
                       max_completion_tokens=20000)
 
     agent = ArxivAgent(llm=llm, summarize = True, process_images = True, 
-                       max_results        = 3, rag_embedding=embeddings,
+                       max_results        = 3, 
                        database_path      ='arxiv_papers_neutron_star',
                        summaries_path     ='arxiv_summaries_neutron_star', 
                        vectorstore_path   ='arxiv_vectorstores_neutron_star', 

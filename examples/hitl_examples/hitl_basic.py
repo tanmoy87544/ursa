@@ -51,8 +51,8 @@ def main():
         vectorstore_path="arxiv_vectorstores",
         download_papers=True,
     )
-    memory      = AgentMemory(embedding_model=OpenAIEmbeddings())
-    
+    memory      = AgentMemory(embedding_model=OpenAIEmbeddings(), path="hitl_memory")
+
     executor    = ExecutionAgent(llm=model, checkpointer=executor_checkpointer, agent_memory=memory)
     planner     = PlanningAgent(llm=model, checkpointer=planner_checkpointer)
     websearcher = WebSearchAgent(llm=model, checkpointer=websearcher_checkpointer)
@@ -74,6 +74,7 @@ def main():
             break
 
         if "[Arxiver]" in user_prompt:
+            user_prompt = user_prompt.replace("[Arxiver]","")
             llm_search_query = model.invoke(f"The user stated {user_prompt}. Generate between 1 and 8 words for a search query to address the users need. Return only the words to search").content
             print("Searching ArXiv for ", llm_search_query)
             arxiv_result = arxiv_agent.run(arxiv_search_query=llm_search_query, context=last_agent_result + user_prompt)
@@ -86,6 +87,7 @@ def main():
             continue
 
         if "[Executor]" in user_prompt:
+            user_prompt = user_prompt.replace("[Executor]","")
             if executor_state:
                 executor_state["messages"].append(HumanMessage(f"The last agent output was: {last_agent_result}\n The user stated: {user_prompt}"))
                 executor_state = executor.action.invoke(executor_state, {
@@ -105,6 +107,7 @@ def main():
             continue
 
         if "[Planner]" in user_prompt:
+            user_prompt = user_prompt.replace("[Planner]","")
             if planner_state:
                 planner_state["messages"].append(HumanMessage(f"The last agent output was: {last_agent_result}\n The user stated: {user_prompt}"))
                 planner_state = planner.action.invoke(planner_state, {
@@ -123,6 +126,7 @@ def main():
             continue
 
         if "[WebSearcher]" in user_prompt:
+            user_prompt = user_prompt.replace("[WebSearcher]","")
             if websearcher_state:
                 websearcher_state["messages"].append(HumanMessage(f"The last agent output was: {last_agent_result}\n The user stated: {user_prompt}"))
                 websearcher_state = websearcher.action.invoke(websearcher_state, {
@@ -141,11 +145,13 @@ def main():
             continue
 
         if "[Rememberer]" in user_prompt:
+            user_prompt = user_prompt.replace("[Rememberer]","")
             memory_output = rememberer.remember(user_prompt)
             print(f"[Rememberer Output]:\n {memory_output}")
             continue
 
         if "[Chatter]" in user_prompt:
+            user_prompt = user_prompt.replace("[Chatter]","")
             chat_output = model.invoke(f"The last agent output was: {last_agent_result}\n The user stated: {user_prompt}")
             last_agent_result = chat_output.content
             print(f"[Chatter Output]:\n {last_agent_result}")

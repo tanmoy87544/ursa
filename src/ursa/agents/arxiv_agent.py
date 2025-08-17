@@ -262,11 +262,10 @@ class ArxivAgent(BaseAgent):
                 i, result = future.result()
                 summaries[i] = result
 
-        print()
-        print(f"Max Relevancy Score: {max(relevancy_scores)}")
-        print(f"Min Relevancy Score: {min(relevancy_scores)}")
-        print(f"Median Relevancy Score: {statistics.median(relevancy_scores)}")
-        print()
+        if self.rag_embedding:
+            print(f"\nMax Relevancy Score: {max(relevancy_scores)}")
+            print(f"Min Relevancy Score: {min(relevancy_scores)}")
+            print(f"Median Relevancy Score: {statistics.median(relevancy_scores)}\n")
         
         return {**state, "summaries": summaries}
 
@@ -286,7 +285,7 @@ class ArxivAgent(BaseAgent):
 
         combined = "\n\n" + ("\n\n" + "-" * 40 + "\n\n").join(formatted)
 
-        with open('summaries_combined.txt', "w") as f:
+        with open(self.summaries_path+'/summaries_combined.txt', "w") as f:
             f.write(combined)
 
         prompt = ChatPromptTemplate.from_template("""
@@ -303,7 +302,7 @@ class ArxivAgent(BaseAgent):
 
         final_summary = chain.invoke({"Summaries": combined, "context":state["context"]})
 
-        with open('final_summary.txt', "w") as f:
+        with open(self.summaries_path+'/final_summary.txt', "w") as f:
             f.write(final_summary)
 
         return {**state, "final_summary": final_summary}

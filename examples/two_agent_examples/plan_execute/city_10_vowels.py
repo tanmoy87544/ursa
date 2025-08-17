@@ -30,7 +30,7 @@ def main(mode: str):
         planning_output = planner.action.invoke(init)
         print(planning_output["messages"][-1].content)
         planning_output["workspace"] = "workspace_cityVowels"
-        final_results = executor.action.invoke(planning_output)
+        final_results = executor.action.invoke(planning_output, {"recursion_limit":100000})
         for x in final_results["messages"]:
             print(x.content)
         # print(final_results["messages"][-1].content)

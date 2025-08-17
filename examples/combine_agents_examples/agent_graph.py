@@ -241,7 +241,7 @@ def main():
         prompt="""What are the constraints on the neutron star radius and what uncertainties are there on the constraints? 
                 Summarize the results in a markdown document. Include a plot of the data extracted from the papers. This 
                 will be reviewed by experts in the field so technical accuracy and clarity is critical.""")
-    print(result["messages"][-1])
+    print(result["messages"][-1].content)
 
 
 if __name__ == "__main__":

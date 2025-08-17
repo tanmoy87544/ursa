@@ -20,7 +20,7 @@ model = ChatOllama(
 
 embedding_model = OllamaEmbeddings(model="nomic-embed-text:latest")
 
-memory = AgentMemory(embedding_model=embedding_model)
+memory = AgentMemory(embedding_model=embedding_model,path=".")
 
 
 # Initialize the agent
