@@ -6,16 +6,16 @@ The flexible agentic workflow for accelerating scientific tasks.
 Composes information flow between agents for planning, code writing and execution, and online research to solve complex problems.
 
 ## Installation
-With pip:
-```console
-git clone https://github.com/lanl/ursa.git
-cd ursa
-pip install -e . 
+You can install `ursa` via `pip` or `uv`.
+
+**pip**
+```bash
+pip install ursa-ai
 ```
 
-With uv:
-```console
-uv add <ADD PROPER ADDRESS HERE> 
+**uv**
+```bash
+uv add ursa-ai
 ```
 
 ## How to use this code

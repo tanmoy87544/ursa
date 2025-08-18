@@ -1,5 +1,5 @@
 [project]
-name = "ursa"
+name = "ursa-ai"
 version = "0.2.0"
 description = "Agents for science at LANL"
 readme = "README.md"
