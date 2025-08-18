@@ -6,16 +6,16 @@ The flexible agentic workflow for accelerating scientific tasks.
 Composes information flow between agents for planning, code writing and execution, and online research to solve complex problems.
 
 ## Installation
-With pip:
-```console
-git clone https://github.com/lanl/ursa.git
-cd ursa
-pip install -e . 
+You can install `ursa` via `pip` or `uv`.
+
+**pip**
+```bash
+pip install ursa-ai
 ```
 
-With uv:
-```console
-uv add <ADD PROPER ADDRESS HERE> 
+**uv**
+```bash
+uv add ursa-ai
 ```
 
 ## How to use this code
@@ -32,13 +32,13 @@ Documentation for each URSA agent:
 
 Documentation for combining agents:
 - [ArXiv -> Execution for Materials](docs/combining_arxiv_and_execution.md )
-- [ArXiv -> Execution for Neurton Star Properties](docs/combining_arxiv_and_execution_neutronStar.md  )
+- [ArXiv -> Execution for Neutron Star Properties](docs/combining_arxiv_and_execution_neutronStar.md  )
 
 # Sandboxing
 The Execution Agent is allowed to run system commands and write/run code. Being able to execute arbitrary system commands or write
 and execute code has the potential to cause problems like:
 - Damage code or data on the computer
-- Damage the compter
+- Damage the computer
 - Transmit your local data
 
 The Web Search Agent scrapes data from urls, so has the potential to attempt to pull information from questionable sources.
@@ -51,13 +51,23 @@ Some suggestions for sandboxing the agent:
 
 You have a duty for ensuring that you use URSA responsibly.
 
+## Development Dependencies
+
+* [`uv`](https://docs.astral.sh/uv/)
+    * `uv` is an extremely fast python package and project manager, written in Rust.
+      Follow installation instructions
+      [here](https://docs.astral.sh/uv/getting-started/installation/)
+
+* [`just`](https://github.com/casey/just)
+    * After installing `uv`, you can install just with `uv tool install rust-just`
+
 ## Development Team
 
 URSA has been developed at Los Alamos National Laboratory as part of the ArtIMis project.
 
 <img src="./logos/artimis.png" alt="ArtIMis Logo" width="200" height="200">
 
-### Notice of Copywright Assertion (O4958):
+### Notice of Copyright Assertion (O4958):
 *This program is Open-Source under the BSD-3 License.
 Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:*
 - *Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.*

@@ -1,5 +1,5 @@
 help:
-	echo "Help!"
+    just -l -u
 
 test:
 	uv run examples/single_agent_examples/execution_agent/bayesian_optimization.py
