@@ -1,5 +1,5 @@
 version = 1
-revision = 2
+revision = 3
 requires-python = ">=3.10"
 resolution-markers = [
     "python_full_version >= '3.13' and sys_platform == 'win32'",
@@ -5598,8 +5598,7 @@ wheels = [
 ]
 
 [[package]]
-name = "ursa"
-version = "0.1.0"
+name = "ursa-ai"
 source = { editable = "." }
 dependencies = [
     { name = "arxiv" },
