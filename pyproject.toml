@@ -2,7 +2,6 @@
 name = "ursa-ai"
 dynamic = ["version"]
 description = "Agents for science at LANL"
-license = "BSD-3"
 readme = "README.md"
 authors = [
     { name = "Mike Grosskopf", email = "mikegros@lanl.gov" },
