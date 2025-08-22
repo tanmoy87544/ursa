@@ -33,7 +33,9 @@ class AgentMemory:
         collection_name: str = "agent_memory",
     ) -> None:
         self.path = (
-            Path(path) if path else Path(__file__).resolve().parent / "agent_memory_db"
+            Path(path)
+            if path
+            else Path(__file__).resolve().parent / "agent_memory_db"
         )
         self.collection_name = collection_name
         self.path.mkdir(parents=True, exist_ok=True)
@@ -69,7 +71,9 @@ class AgentMemory:
             Optional metadata dict for each chunk, same length as ``chunks``.
         """
         docs = [
-            Document(page_content=text, metadata=metadatas[i] if metadatas else {})
+            Document(
+                page_content=text, metadata=metadatas[i] if metadatas else {}
+            )
             for i, text in enumerate(chunks)
         ]
 
@@ -107,7 +111,8 @@ class AgentMemory:
             if len(text) > 0:  # only add non-empty documents
                 docs.append(
                     Document(
-                        page_content=text, metadata=metadatas[i] if metadatas else {}
+                        page_content=text,
+                        metadata=metadatas[i] if metadatas else {},
                     )
                 )
         self.vectorstore.add_documents(docs)
@@ -161,9 +166,7 @@ def delete_database(path: Optional[str | Path] = None):
         ``agent_memory_db`` is created in the package’s base directory.
     """
 
-    db_path = (
-        Path(path) if path else Path("~/.cache/ursa/rag/db/")
-    )
+    db_path = Path(path) if path else Path("~/.cache/ursa/rag/db/")
     if os.path.exists(db_path):
         shutil.rmtree(db_path)
         print(f"Database: {db_path} has been deleted.")

@@ -6,6 +6,7 @@ from langchain_litellm import ChatLiteLLM
 from ursa.agents import ArxivAgent
 from ursa.agents import ExecutionAgent
 
+
 def main():
     model = ChatLiteLLM(
         model="openai/o3",
@@ -40,7 +41,7 @@ def main():
 
     init = {"messages": [HumanMessage(content=exe_plan)]}
 
-    final_results = executor.action.invoke(init, {"recursion_limit":10000})
+    final_results = executor.action.invoke(init, {"recursion_limit": 10000})
 
     for x in final_results["messages"]:
         print(x.content)

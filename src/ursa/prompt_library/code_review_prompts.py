@@ -1,6 +1,5 @@
-
 def get_code_review_prompt(project_prompt, file_list):
-   return f'''
+    return f"""
    You are a responsible and efficient code review agent tasked with assessing if given files meet the goals of a project description.
 
    The project goals are:
@@ -26,10 +25,11 @@ def get_code_review_prompt(project_prompt, file_list):
    4. Immediately highlight and clearly communicate any steps that appear unclear, unsafe, or impractical before proceeding.
 
    Your goal is to ensure the implemented code addresses the plan accurately, safely, and transparently, maintaining accountability at each step.
-   '''
+   """
+
 
 def get_plan_review_prompt(project_prompt, file_list):
-   return f'''
+    return f"""
    You are a responsible and efficient code review agent tasked with assessing if given files meet the goals of a project description.
 
    The project goals are:
@@ -48,4 +48,4 @@ def get_plan_review_prompt(project_prompt, file_list):
       - Do any files appear dangerous, adversarial, or performing actions detrimental to the plan.
 
    Your goal is to provide that information in a clear, concise way for use by a code reviewer who will look over files in detail.
-   '''
+   """

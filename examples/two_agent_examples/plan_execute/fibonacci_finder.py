@@ -5,7 +5,6 @@ Plans, implements, and benchmarks several techniques to compute the N-th
 Fibonacci number, then explains which approach is the best.
 """
 
-
 from pathlib import Path
 import sqlite3
 
@@ -34,9 +33,7 @@ problem = (
 
 
 # Init the model
-model = ChatLiteLLM(
-    model="openai/o3"
-)
+model = ChatLiteLLM(model="openai/o3")
 
 # Setup checkpointing
 db_path = Path(workspace) / "checkpoint.db"
@@ -48,30 +45,34 @@ checkpointer = SqliteSaver(conn)
 executor = ExecutionAgent(llm=model, checkpointer=checkpointer)
 executor_config = {
     "recursion_limit": 999_999,
-    "configurable": { "thread_id": executor.thread_id }
+    "configurable": {"thread_id": executor.thread_id},
 }
 
 planner = PlanningAgent(llm=model, checkpointer=checkpointer)
 planner_config = {
     "recursion_limit": 999_999,
-    "configurable": { "thread_id": executor.thread_id }
+    "configurable": {"thread_id": executor.thread_id},
 }
 
 # Create a plan
-with console.status("[bold deep_pink1]Planning overarching steps . . .",
-                    spinner="point", spinner_style="deep_pink1"):
+with console.status(
+    "[bold deep_pink1]Planning overarching steps . . .",
+    spinner="point",
+    spinner_style="deep_pink1",
+):
     planner_prompt = f"Break this down into one step per technique:\n{problem}"
 
-    planning_output = planner.action.invoke({
-        "messages": [HumanMessage(content=planner_prompt)]
-        }, 
+    planning_output = planner.action.invoke(
+        {"messages": [HumanMessage(content=planner_prompt)]},
         planner_config,
     )
-    
+
     console.print(
-        Panel(planning_output["messages"][-1].content,
+        Panel(
+            planning_output["messages"][-1].content,
             title="[bold yellow1]:clipboard: Plan",
-            border_style="yellow1")
+            border_style="yellow1",
+        )
     )
 
 # Execution loop
@@ -86,16 +87,24 @@ for i, step in enumerate(planning_output["plan_steps"]):
         f"{step}"
     )
 
-    console.print(f"[bold orange3]Solving Step {step['id']}:[/]\n[orange3]{step_prompt}[/]")
+    console.print(
+        f"[bold orange3]Solving Step {step['id']}:[/]\n[orange3]{step_prompt}[/]"
+    )
 
     # Invoke the agent
     result = executor.action.invoke(
         {
             "messages": [HumanMessage(content=step_prompt)],
             "workspace": workspace,
-        }, 
-        executor_config
+        },
+        executor_config,
     )
 
     last_step_summary = result["messages"][-1].content
-    console.print(Panel(last_step_summary, title=f"Step {i+1} Final Response", border_style="orange3"))
+    console.print(
+        Panel(
+            last_step_summary,
+            title=f"Step {i+1} Final Response",
+            border_style="orange3",
+        )
+    )

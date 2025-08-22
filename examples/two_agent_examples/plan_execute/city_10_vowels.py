@@ -12,9 +12,7 @@ def main(mode: str):
         # Define a simple problem
         problem = "Find a city with as least 10 vowels in its name."
         model = ChatLiteLLM(
-            model="openai/o3"
-            if mode == "prod"
-            else "ollama_chat/llama3.1:8b",
+            model="openai/o3" if mode == "prod" else "ollama_chat/llama3.1:8b",
             max_tokens=10000 if mode == "prod" else 4000,
             max_retries=2,
         )
@@ -30,7 +28,9 @@ def main(mode: str):
         planning_output = planner.action.invoke(init)
         print(planning_output["messages"][-1].content)
         planning_output["workspace"] = "workspace_cityVowels"
-        final_results = executor.action.invoke(planning_output, {"recursion_limit":100000})
+        final_results = executor.action.invoke(
+            planning_output, {"recursion_limit": 100000}
+        )
         for x in final_results["messages"]:
             print(x.content)
         # print(final_results["messages"][-1].content)

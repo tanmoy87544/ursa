@@ -56,25 +56,45 @@ class WebSearchAgent(BaseAgent):
         self.websearch_prompt = websearch_prompt
         self.reflection_prompt = reflection_prompt
         self.tools = [search_tool, process_content]  # + cb_tools
-        self.has_internet = self._check_for_internet(kwargs.get("url","http://www.lanl.gov"))
+        self.has_internet = self._check_for_internet(
+            kwargs.get("url", "http://www.lanl.gov")
+        )
         self._initialize_agent()
 
     def review_node(self, state: WebSearchState) -> WebSearchState:
         if not self.has_internet:
-            return {"messages":[HumanMessage(content="No internet for WebSearch Agent so no research to review.")], "urls_visited": []}
-        
+            return {
+                "messages": [
+                    HumanMessage(
+                        content="No internet for WebSearch Agent so no research to review."
+                    )
+                ],
+                "urls_visited": [],
+            }
+
         translated = [SystemMessage(content=reflection_prompt)] + state[
             "messages"
         ]
-        res = self.llm.invoke(translated, {"configurable": {"thread_id": self.thread_id}})
+        res = self.llm.invoke(
+            translated, {"configurable": {"thread_id": self.thread_id}}
+        )
         return {"messages": [HumanMessage(content=res.content)]}
 
     def response_node(self, state: WebSearchState) -> WebSearchState:
         if not self.has_internet:
-            return {"messages":[HumanMessage(content="No internet for WebSearch Agent. No research carried out.")], "urls_visited": []}
+            return {
+                "messages": [
+                    HumanMessage(
+                        content="No internet for WebSearch Agent. No research carried out."
+                    )
+                ],
+                "urls_visited": [],
+            }
 
         messages = state["messages"] + [SystemMessage(content=summarize_prompt)]
-        response = self.llm.invoke(messages, {"configurable": {"thread_id": self.thread_id}})
+        response = self.llm.invoke(
+            messages, {"configurable": {"thread_id": self.thread_id}}
+        )
 
         urls_visited = []
         for message in messages:
@@ -82,7 +102,7 @@ class WebSearchAgent(BaseAgent):
                 if "url" in message.tool_calls[0]["args"]:
                     urls_visited.append(message.tool_calls[0]["args"]["url"])
         return {"messages": [response.content], "urls_visited": urls_visited}
-    
+
     def _check_for_internet(self, url, timeout=2):
         """
         Checks for internet connectivity by attempting an HTTP GET request.
@@ -119,15 +139,28 @@ class WebSearchAgent(BaseAgent):
         )
         self.action = self.graph.compile(checkpointer=self.checkpointer)
         # self.action.get_graph().draw_mermaid_png(output_file_path="./websearch_agent_graph.png", draw_method=MermaidDrawMethod.PYPPETEER)
-    
+
     def run(self, prompt, recursion_limit=100):
         if not self.has_internet:
-            return {"messages":[HumanMessage(content="No internet for WebSearch Agent. No research carried out.")]}
+            return {
+                "messages": [
+                    HumanMessage(
+                        content="No internet for WebSearch Agent. No research carried out."
+                    )
+                ]
+            }
         inputs = {
             "messages": [HumanMessage(content=prompt)],
             "model": self.llm,
         }
-        return self.action.invoke(inputs, {"recursion_limit":recursion_limit, "configurable": {"thread_id": self.thread_id}})        
+        return self.action.invoke(
+            inputs,
+            {
+                "recursion_limit": recursion_limit,
+                "configurable": {"thread_id": self.thread_id},
+            },
+        )
+
 
 def process_content(
     url: str, context: str, state: Annotated[dict, InjectedState]
@@ -150,7 +183,11 @@ def process_content(
     Carefully summarize the content in full detail, given the following context:
     {context}
     """
-    summarized_information = state["model"].invoke(content_prompt, {"configurable": {"thread_id": self.thread_id}}).content
+    summarized_information = (
+        state["model"]
+        .invoke(content_prompt, {"configurable": {"thread_id": self.thread_id}})
+        .content
+    )
     return summarized_information
 
 
@@ -176,7 +213,13 @@ def main():
         "messages": [HumanMessage(content=problem_string)],
         "model": model,
     }
-    result = websearcher.action.invoke(inputs, {"recursion_limit": 10000, "configurable": {"thread_id": self.thread_id}})
+    result = websearcher.action.invoke(
+        inputs,
+        {
+            "recursion_limit": 10000,
+            "configurable": {"thread_id": self.thread_id},
+        },
+    )
 
     colors = [BLUE, RED]
     for ii, x in enumerate(result["messages"][:-1]):

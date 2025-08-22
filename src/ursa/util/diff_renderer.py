@@ -9,16 +9,19 @@ from rich.text import Text
 # unified diff hunk header regex
 _HUNK_RE = re.compile(r"^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@")
 
+
 @dataclass
 class _LineStyle:
     prefix: str
     bg: str
+
 
 _STYLE = {
     "add": _LineStyle("+ ", "on #003000"),
     "del": _LineStyle("- ", "on #300000"),
     "ctx": _LineStyle("  ", "on grey15"),
 }
+
 
 class DiffRenderer:
     """Renderable diff—`console.print(DiffRenderer(...))`"""
@@ -64,7 +67,9 @@ class DiffRenderer:
                 indent_ticks = f" {tick_col} {tick_col}"
                 # pad to the indent width
                 full_indent = indent_ticks.ljust(2 * n + 3)
-                yield Text(f"{full_indent}{raw}".ljust(width), style="white on grey30")
+                yield Text(
+                    f"{full_indent}{raw}".ljust(width), style="white on grey30"
+                )
                 continue
 
             # skip header lines
@@ -98,7 +103,9 @@ class DiffRenderer:
             new_str = str(new_num) if new_num is not None else " "
 
             # Syntax-highlight the code part
-            syntax = Syntax(code, self._lexer_name, line_numbers=False, word_wrap=False)
+            syntax = Syntax(
+                code, self._lexer_name, line_numbers=False, word_wrap=False
+            )
             text_code: Text = syntax.highlight(code)
             if text_code.plain.endswith("\n"):
                 text_code = text_code[:-1]

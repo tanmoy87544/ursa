@@ -5,6 +5,7 @@ from langchain_core.load import dumps
 
 import json
 
+
 class BaseAgent:
     # llm: BaseChatModel
     # llm_with_tools: Runnable[LanguageModelInput, BaseMessage]
@@ -35,7 +36,7 @@ class BaseAgent:
 
         self.checkpointer = checkpointer
         self.thread_id = self.__class__.__name__
-    
+
     def write_state(self, filename, state):
         json_state = dumps(state, ensure_ascii=False)
         with open(filename, "w") as f:

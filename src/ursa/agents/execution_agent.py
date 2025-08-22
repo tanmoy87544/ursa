@@ -6,9 +6,16 @@ from pathlib import Path
 from typing import Annotated, Any, Literal, Optional
 
 import coolname
-from langchain_community.tools import DuckDuckGoSearchResults  # TavilySearchResults,
+from langchain_community.tools import (
+    DuckDuckGoSearchResults,
+)  # TavilySearchResults,
 from langchain_core.language_models import BaseChatModel
-from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
+from langchain_core.messages import (
+    AIMessage,
+    HumanMessage,
+    SystemMessage,
+    ToolMessage,
+)
 from langchain_core.tools import InjectedToolCallId, tool
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.message import add_messages
@@ -49,7 +56,7 @@ class ExecutionAgent(BaseAgent):
     def __init__(
         self,
         llm: str | BaseChatModel = "openai/gpt-4o-mini",
-        agent_memory: Optional [Any | AgentMemory] = None,
+        agent_memory: Optional[Any | AgentMemory] = None,
         log_state: bool = False,
         **kwargs,
     ):
@@ -101,14 +108,17 @@ class ExecutionAgent(BaseAgent):
             new_state["symlinkdir"]["is_linked"] = True
 
         if type(new_state["messages"][0]) == SystemMessage:
-            new_state["messages"][0] = SystemMessage(content=self.executor_prompt)
+            new_state["messages"][0] = SystemMessage(
+                content=self.executor_prompt
+            )
         else:
             new_state["messages"] = [
                 SystemMessage(content=self.executor_prompt)
             ] + state["messages"]
         try:
             response = self.llm.invoke(
-                new_state["messages"], {"configurable": {"thread_id": self.thread_id}}
+                new_state["messages"],
+                {"configurable": {"thread_id": self.thread_id}},
             )
         except ContentPolicyViolationError as e:
             print("Error: ", e, " ", new_state["messages"][-1].content)
@@ -188,7 +198,8 @@ class ExecutionAgent(BaseAgent):
                     For reason: {safety_check.content}
                     """
                     console.print(
-                        "[bold red][WARNING][/bold red] Command deemed unsafe:", query
+                        "[bold red][WARNING][/bold red] Command deemed unsafe:",
+                        query,
                     )
                     # and tell the user the reason
                     console.print(
@@ -414,7 +425,9 @@ def edit_code(
     new_code_clean = _strip_fences(new_code)
 
     if old_code_clean not in content:
-        console.print(f"[yellow] ⚠️ 'old_code' not found in file'; no changes made.[/]")
+        console.print(
+            f"[yellow] ⚠️ 'old_code' not found in file'; no changes made.[/]"
+        )
         return f"No changes made to {filename}: 'old_code' not found in file."
 
     updated = content.replace(old_code_clean, new_code_clean, 1)
@@ -482,7 +495,9 @@ def command_safe(state: ExecutionState) -> Literal["safe", "unsafe"]:
 
 def main():
     execution_agent = ExecutionAgent()
-    problem_string = "Write and execute a python script to print the first 10 integers."
+    problem_string = (
+        "Write and execute a python script to print the first 10 integers."
+    )
     inputs = {
         "messages": [HumanMessage(content=problem_string)]
     }  # , "workspace":"dummy_test"}

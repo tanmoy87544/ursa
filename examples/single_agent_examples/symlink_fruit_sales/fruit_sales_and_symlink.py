@@ -20,13 +20,13 @@ console = Console()  # global console object
 
 # notice the symlink example demonstrate a source and dest dir not having the same
 # name - simple, but just want to draw attention to that
-symlinkdict = {"source" : "./data_dir", "dest" : "data" }
+symlinkdict = {"source": "./data_dir", "dest": "data"}
 
 problem = (
-# notice below we refer to the destination dir 'data' where we expect the working
-# dir will have a symlink to.  Notice also we're not specifically saying what the
-# filename is, so we're leaving it to the agentic framework to figure that out.
-"""
+    # notice below we refer to the destination dir 'data' where we expect the working
+    # dir will have a symlink to.  Notice also we're not specifically saying what the
+    # filename is, so we're leaving it to the agentic framework to figure that out.
+    """
 Your task is to use the tabular data in the 'data' dir as input.  You are to produce
 two plots:
 1. a barplot of total fruit sales grouped by fruit.
@@ -41,6 +41,7 @@ lines around bars and any other additions you think are interesting.
 workspace = f"fruit_sales_{coolname.generate_slug(2)}"
 workspace_header = f"[cyan] (- [bold cyan]{workspace}[reset][cyan] -) [reset]"
 
+
 def main(model_name: str):
     """Run a simple example of an agent."""
     try:
@@ -49,15 +50,15 @@ def main(model_name: str):
             max_tokens=10000,
             max_retries=2,
         )
-        
+
         # 4. Choose a fun emoji based on the model family (swap / extend as you add more)
         if model_name.startswith("openai"):
-            model_emoji = "🤖"      # OpenAI
+            model_emoji = "🤖"  # OpenAI
         elif "llama" in model_name.lower():
-            model_emoji = "🦙"      # Llama
+            model_emoji = "🦙"  # Llama
         else:
-            model_emoji = "🧠"      # Fallback / generic LLM
-        
+            model_emoji = "🧠"  # Fallback / generic LLM
+
         # 5. Print the panel, now with model info
         console.print(
             Panel.fit(
@@ -143,7 +144,6 @@ if __name__ == "__main__":
     # ── continue exactly as before ─────────────────────────────────────
     final_output, workspace = main(model_name=model)
 
-
     print("=" * 80)
     print("=" * 80)
     print("=" * 80)
@@ -159,10 +159,10 @@ if __name__ == "__main__":
 
     console.rule("[bold cyan]Run complete")
     console.print(
-            Panel.fit(
-                f":rocket:  [bold bright_blue]{workspace}[/bold bright_blue]  :rocket:",
-                title="[bold green]WORKSPACE RESULTS IN[/bold green]",
-                border_style="bright_magenta",
-                padding=(1, 4),
-            )
+        Panel.fit(
+            f":rocket:  [bold bright_blue]{workspace}[/bold bright_blue]  :rocket:",
+            title="[bold green]WORKSPACE RESULTS IN[/bold green]",
+            border_style="bright_magenta",
+            padding=(1, 4),
+        )
     )
