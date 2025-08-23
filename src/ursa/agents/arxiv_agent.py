@@ -170,10 +170,10 @@ class ArxivAgent(BaseAgent):
 
                 if os.path.exists(pdf_filename):
                     print(
-                        f"Paper # {i+1}, Title: {title}, already exists in database"
+                        f"Paper # {i + 1}, Title: {title}, already exists in database"
                     )
                 else:
-                    print(f"Downloading paper # {i+1}, Title: {title}")
+                    print(f"Downloading paper # {i + 1}, Title: {title}")
                     response = requests.get(pdf_url)
                     with open(pdf_filename, "wb") as f:
                         f.write(response.content)
@@ -356,7 +356,7 @@ class ArxivAgent(BaseAgent):
             return {**state, "final_summary": None}
 
         for i, (paper, summary) in enumerate(zip(papers, summaries)):
-            citation = f"[{i+1}] Arxiv ID: {paper['arxiv_id']}"
+            citation = f"[{i + 1}] Arxiv ID: {paper['arxiv_id']}"
             formatted.append(f"{citation}\n\nSummary:\n{summary}")
 
         combined = "\n\n" + ("\n\n" + "-" * 40 + "\n\n").join(formatted)

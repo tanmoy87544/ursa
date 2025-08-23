@@ -240,7 +240,7 @@ You are a materials-science assistant. Given the following metadata about a mate
     def _aggregate_node(self, state: Dict) -> Dict:
         """Combine all summaries into a single, coherent answer."""
         combined = "\n\n----\n\n".join(
-            f"[{i+1}] {m['material_id']}\n\n{summary}"
+            f"[{i + 1}] {m['material_id']}\n\n{summary}"
             for i, (m, summary) in enumerate(
                 zip(state["materials"], state["summaries"])
             )

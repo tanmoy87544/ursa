@@ -40,7 +40,7 @@ def main():
 
     t1 = time.time()
 
-    print(f"Time Taken: {t1-t0}")
+    print(f"Time Taken: {t1 - t0}")
     print(f"Total Tokens Used: {callback_handler.total_tokens}")
     print(f"Prompt Tokens: {callback_handler.prompt_tokens}")
     print(f"Completion Tokens: {callback_handler.completion_tokens}")

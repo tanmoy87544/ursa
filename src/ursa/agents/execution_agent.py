@@ -150,7 +150,7 @@ class ExecutionAgent(BaseAgent):
                         tool_strings.append(tool_name)
                         for y in tool["args"]:
                             tool_strings.append(
-                                f'Arg: {str(y)}\nValue: {str(tool["args"][y])}'
+                                f"Arg: {str(y)}\nValue: {str(tool['args'][y])}"
                             )
                     memories.append("\n".join(tool_strings))
             memories.append(response.content)

@@ -57,7 +57,7 @@ executor_config = {
 # Execution loop
 for i, step_prompt in enumerate(problem):
     console.print(
-        f"[bold orange3]Solving Step {i+1}:[/]\n[orange3]{step_prompt}[/]"
+        f"[bold orange3]Solving Step {i + 1}:[/]\n[orange3]{step_prompt}[/]"
     )
 
     # Invoke the agent
@@ -72,7 +72,7 @@ for i, step_prompt in enumerate(problem):
     console.print(
         Panel(
             result["messages"][-1].content,
-            title=f"Step {i+1} Final Response",
+            title=f"Step {i + 1} Final Response",
             border_style="orange3",
         )
     )

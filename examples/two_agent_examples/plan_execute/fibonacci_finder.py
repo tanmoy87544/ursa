@@ -104,7 +104,7 @@ for i, step in enumerate(planning_output["plan_steps"]):
     console.print(
         Panel(
             last_step_summary,
-            title=f"Step {i+1} Final Response",
+            title=f"Step {i + 1} Final Response",
             border_style="orange3",
         )
     )

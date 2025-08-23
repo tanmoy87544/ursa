@@ -118,7 +118,7 @@ class CodeReviewAgent(BaseAgent):
         if new_state["iteration"] >= len(new_state["code_files"]):
             new_state["iteration"] = -1
         print(
-            f"On to file {new_state['iteration']+1} out of {len(new_state['code_files'])}"
+            f"On to file {new_state['iteration'] + 1} out of {len(new_state['code_files'])}"
         )
         return new_state
 

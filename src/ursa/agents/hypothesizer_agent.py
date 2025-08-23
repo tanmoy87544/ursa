@@ -357,7 +357,7 @@ class HypothesizerAgent(BaseAgent):
             You are a system that produces a FULL LaTeX document.
             Here is information about a multi-iteration process:
 
-            Original question: {state['question']}
+            Original question: {state["question"]}
 
             Below are the solutions, critiques, and competitor perspectives from each iteration:
 
@@ -365,7 +365,7 @@ class HypothesizerAgent(BaseAgent):
 
             The final solution we arrived at was:
 
-            {state['final_solution']}
+            {state["final_solution"]}
 
             Now produce a valid LaTeX document.  Be sure to use a table of contents.
             It must start with an Executive Summary (that may be multiple pages) which summarizes
