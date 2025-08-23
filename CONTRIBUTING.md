@@ -13,7 +13,7 @@ pip install ruff
 uv tool install ruff
 ```
 
-See https://docs.astral.sh/ruff/installation/ for more ways to install `ruff`.
+See https://docs.astral.sh/ruff/installation for more ways to install `ruff`.
 
 Before pushing to `main` or submitting a pull request, please run the following
 in this directory:
