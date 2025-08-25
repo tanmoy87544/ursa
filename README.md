@@ -1,6 +1,9 @@
 # URSA - The Universal Research and Scientific Agent
 
-<img src="./logos/logo.png" alt="URSA Logo" width="200" height="200">
+<img
+    src="https://github.com/lanl/ursa/raw/main/logos/logo.png"
+    alt="URSA Logo" width="200" height="200"
+>
 
 [![PyPI Version][pypi-version]](https://pypi.org/project/ursa-ai/)
 [![PyPI Downloads][total-downloads]](https://pepy.tech/projects/ursa-ai)
@@ -73,7 +76,10 @@ You have a duty for ensuring that you use URSA responsibly.
 
 URSA has been developed at Los Alamos National Laboratory as part of the ArtIMis project.
 
-<img src="./logos/artimis.png" alt="ArtIMis Logo" width="200" height="200">
+<img
+    src="https://github.com/lanl/ursa/raw/main/logos/artimis.png"
+    alt="ArtIMis Logo" width="200" height="200"
+>
 
 ### Notice of Copyright Assertion (O4958):
 *This program is Open-Source under the BSD-3 License.
