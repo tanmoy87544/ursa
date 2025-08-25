@@ -1,24 +1,28 @@
 import sys
 
-from ursa.agents       import ArxivAgent
+from ursa.agents import ArxivAgent
 from langchain_litellm import ChatLiteLLM
 
+
 def main():
+    llm = ChatLiteLLM(model="openai/o3", max_completion_tokens=20000)
 
-    llm = ChatLiteLLM(model="openai/o3",
-                      max_completion_tokens=20000)
+    agent = ArxivAgent(
+        llm=llm,
+        summarize=True,
+        process_images=True,
+        max_results=3,
+        database_path="arxiv_papers_neutron_star",
+        summaries_path="arxiv_summaries_neutron_star",
+        vectorstore_path="arxiv_vectorstores_neutron_star",
+        download_papers=True,
+    )
 
-    agent = ArxivAgent(llm=llm, summarize = True, process_images = True, 
-                       max_results        = 3, 
-                       database_path      ='arxiv_papers_neutron_star',
-                       summaries_path     ='arxiv_summaries_neutron_star', 
-                       vectorstore_path   ='arxiv_vectorstores_neutron_star', 
-                       download_papers    = True)
+    result = agent.run(
+        arxiv_search_query="Experimental Constraints on neutron star radius",
+        context="What are the constraints on the neutron star radius and what uncertainties are there on the constraints?",
+    )
 
-    
-    result = agent.run(arxiv_search_query="Experimental Constraints on neutron star radius", 
-                       context="What are the constraints on the neutron star radius and what uncertainties are there on the constraints?")
-    
     print(result)
 
 

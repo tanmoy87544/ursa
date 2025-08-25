@@ -23,7 +23,9 @@ def main():
     queried to solve the problem step by step.
     """
     try:
-        model = ChatLiteLLM(model="openai/gpt-5", max_completion_tokens=20000, max_retries=2)
+        model = ChatLiteLLM(
+            model="openai/gpt-5", max_completion_tokens=20000, max_retries=2
+        )
 
         init = {"messages": [HumanMessage(content=problem)]}
 

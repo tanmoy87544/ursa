@@ -15,12 +15,11 @@ Optimize the six-hump camel function.
     Carry out the optimization and report the results.
 """
 
-model = ChatOllama(
-    model="gpt-oss:20b")
+model = ChatOllama(model="gpt-oss:20b")
 
 embedding_model = OllamaEmbeddings(model="nomic-embed-text:latest")
 
-memory = AgentMemory(embedding_model=embedding_model,path=".")
+memory = AgentMemory(embedding_model=embedding_model, path=".")
 
 
 # Initialize the agent

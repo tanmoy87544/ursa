@@ -37,14 +37,14 @@ Please keep your plan concise yet sufficiently detailed so that it can be execut
 # reflection_prompt = '''
 # You are a critical reviewer being given a series of steps to solve a problem.
 
-# Provide detailed recommendations, including adding missing steps or removing 
+# Provide detailed recommendations, including adding missing steps or removing
 # superfluous steps. Ensure the proposed effort is appropriate for the problem.
 
-# In the end, decide if the current proposal should be approved or revised. 
+# In the end, decide if the current proposal should be approved or revised.
 # Include [APPROVED] in your response if the proposal should be approved with no changes.
 # '''
 
-reflection_prompt = '''
+reflection_prompt = """
 You are acting as a critical reviewer evaluating a series of steps proposed to solve a specific problem.
 
 Carefully review the proposed steps and provide detailed feedback based on the following criteria:
@@ -61,7 +61,7 @@ At the end of your feedback, clearly state your decision:
 
 - If the current proposal requires no changes, include "[APPROVED]" at the end of your response.
 - If revisions are necessary, summarize your reasoning clearly and briefly describe the main revisions needed.
-'''
+"""
 
 formalize_prompt = """
 Now that the step-by-step plan is finalized, format it into a series of steps in the form of a JSON array with objects having the following structure:

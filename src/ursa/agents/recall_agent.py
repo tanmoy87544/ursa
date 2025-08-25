@@ -4,10 +4,9 @@ from .base import BaseAgent
 
 class RecallAgent(BaseAgent):
     def __init__(self, llm, memory, **kwargs):
-        
         super().__init__(llm, **kwargs)
         self.memorydb = memory
-    
+
     def remember(self, query):
         memories = self.memorydb.retrieve(query)
         summarize_query = f"""

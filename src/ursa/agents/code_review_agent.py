@@ -26,9 +26,20 @@ RED = "\033[91m"
 RESET = "\033[0m"
 BOLD = "\033[1m"
 
-code_extensions = [".py", ".R", ".jl", 
-                   ".c", ".cpp", ".cc", ".cxx", ".c++", ".C", 
-                   ".f90", ".f95", ".f03"]
+code_extensions = [
+    ".py",
+    ".R",
+    ".jl",
+    ".c",
+    ".cpp",
+    ".cc",
+    ".cxx",
+    ".c++",
+    ".C",
+    ".f90",
+    ".f95",
+    ".f03",
+]
 
 
 class CodeReviewState(TypedDict):
@@ -69,7 +80,10 @@ class CodeReviewAgent(BaseAgent):
         new_state["messages"] = [
             SystemMessage(content=plan_review_prompt)
         ] + state["messages"]
-        response = self.llm.invoke(new_state["messages"], {"configurable": {"thread_id": self.thread_id}})
+        response = self.llm.invoke(
+            new_state["messages"],
+            {"configurable": {"thread_id": self.thread_id}},
+        )
         return {"messages": [response]}
 
     # Define the function that calls the model
@@ -84,13 +98,18 @@ class CodeReviewAgent(BaseAgent):
         new_state["messages"].append(
             HumanMessage(content=f"Please review {filename}")
         )
-        response = self.llm.invoke(new_state["messages"], {"configurable": {"thread_id": self.thread_id}})
+        response = self.llm.invoke(
+            new_state["messages"],
+            {"configurable": {"thread_id": self.thread_id}},
+        )
         return {"messages": [response]}
 
     # Define the function that calls the model
     def summarize(self, state: CodeReviewState) -> CodeReviewState:
         messages = [SystemMessage(content=summarize_prompt)] + state["messages"]
-        response = self.llm.invoke(messages, {"configurable": {"thread_id": self.thread_id}})
+        response = self.llm.invoke(
+            messages, {"configurable": {"thread_id": self.thread_id}}
+        )
         return {"messages": [response.content]}
 
     def increment(self, state: CodeReviewState) -> CodeReviewState:
@@ -99,7 +118,7 @@ class CodeReviewAgent(BaseAgent):
         if new_state["iteration"] >= len(new_state["code_files"]):
             new_state["iteration"] = -1
         print(
-            f"On to file {new_state['iteration']+1} out of {len(new_state['code_files'])}"
+            f"On to file {new_state['iteration'] + 1} out of {len(new_state['code_files'])}"
         )
         return new_state
 
@@ -115,7 +134,7 @@ class CodeReviewAgent(BaseAgent):
                     "Answer only either [YES] or [NO]. Is this command safe to run: "
                 )
                 + query,
-                {"configurable": {"thread_id": self.thread_id}}
+                {"configurable": {"thread_id": self.thread_id}},
             )
             if "[NO]" in safety_check.content:
                 print(f"{RED}{BOLD} [WARNING] {RESET}")
@@ -188,21 +207,27 @@ class CodeReviewAgent(BaseAgent):
         self.graph.add_edge("action", "file_review")
         self.graph.add_edge("increment", "file_review")
         self.graph.add_edge("summarize", END)
-        
+
         self.action = self.graph.compile(checkpointer=self.checkpointer)
         # self.action.get_graph().draw_mermaid_png(output_file_path="code_review_agent_graph.png", draw_method=MermaidDrawMethod.PYPPETEER)
-    
+
     def run(self, prompt, workspace):
-        code_files    = [x for x in os.listdir(workspace) if any([ext in x for ext in code_extensions])]
+        code_files = [
+            x
+            for x in os.listdir(workspace)
+            if any([ext in x for ext in code_extensions])
+        ]
         initial_state = {
             "messages": [],
             "project_prompt": prompt,
             "code_files": code_files,
             "edited_files": [],
             "iteration": 0,
-            "workspace":workspace
+            "workspace": workspace,
         }
-        return self.action.invoke(initial_state, {"configurable": {"thread_id": self.thread_id}})
+        return self.action.invoke(
+            initial_state, {"configurable": {"thread_id": self.thread_id}}
+        )
 
 
 @tool
@@ -322,7 +347,10 @@ def main():
         "edited_files": [],
         "iteration": 0,
     }
-    result = code_review_agent.action.invoke(initial_state), {"configurable": {"thread_id": self.thread_id}}
+    result = (
+        code_review_agent.action.invoke(initial_state),
+        {"configurable": {"thread_id": self.thread_id}},
+    )
     for x in result["messages"]:
         print(x.content)
     return result

@@ -6,8 +6,14 @@ from langchain_litellm import ChatLiteLLM
 from langgraph.checkpoint.sqlite import SqliteSaver
 from langchain_openai import OpenAIEmbeddings
 
-from ursa.agents import ArxivAgent, ExecutionAgent, PlanningAgent, WebSearchAgent, RecallAgent
-from ursa.util.memory_logger   import AgentMemory
+from ursa.agents import (
+    ArxivAgent,
+    ExecutionAgent,
+    PlanningAgent,
+    WebSearchAgent,
+    RecallAgent,
+)
+from ursa.util.memory_logger import AgentMemory
 
 header = """
 Testing a HITL version of URSA. Direct a prompt to either the:
@@ -16,6 +22,8 @@ Testing a HITL version of URSA. Direct a prompt to either the:
 The agent will get your prompt, the output of the last agent (if any), and their previous history.
 when done use the escape indicator [USER DONE].
 """
+
+
 def main():
     workspace = "hitl_example"
     os.makedirs(workspace, exist_ok=True)
@@ -51,17 +59,21 @@ def main():
         vectorstore_path="arxiv_vectorstores",
         download_papers=True,
     )
-    memory      = AgentMemory(embedding_model=OpenAIEmbeddings(), path="hitl_memory")
+    memory = AgentMemory(embedding_model=OpenAIEmbeddings(), path="hitl_memory")
 
-    executor    = ExecutionAgent(llm=model, checkpointer=executor_checkpointer, agent_memory=memory)
-    planner     = PlanningAgent(llm=model, checkpointer=planner_checkpointer)
-    websearcher = WebSearchAgent(llm=model, checkpointer=websearcher_checkpointer)
-    rememberer  = RecallAgent(llm=model, memory=memory)
+    executor = ExecutionAgent(
+        llm=model, checkpointer=executor_checkpointer, agent_memory=memory
+    )
+    planner = PlanningAgent(llm=model, checkpointer=planner_checkpointer)
+    websearcher = WebSearchAgent(
+        llm=model, checkpointer=websearcher_checkpointer
+    )
+    rememberer = RecallAgent(llm=model, memory=memory)
 
-    executor_state    = None
-    planner_state     = None
+    executor_state = None
+    planner_state = None
     websearcher_state = None
-    arxiv_state       = None
+    arxiv_state = None
 
     done = False
     last_agent_result = ""
@@ -74,10 +86,15 @@ def main():
             break
 
         if "[Arxiver]" in user_prompt:
-            user_prompt = user_prompt.replace("[Arxiver]","")
-            llm_search_query = model.invoke(f"The user stated {user_prompt}. Generate between 1 and 8 words for a search query to address the users need. Return only the words to search").content
+            user_prompt = user_prompt.replace("[Arxiver]", "")
+            llm_search_query = model.invoke(
+                f"The user stated {user_prompt}. Generate between 1 and 8 words for a search query to address the users need. Return only the words to search"
+            ).content
             print("Searching ArXiv for ", llm_search_query)
-            arxiv_result = arxiv_agent.run(arxiv_search_query=llm_search_query, context=last_agent_result + user_prompt)
+            arxiv_result = arxiv_agent.run(
+                arxiv_search_query=llm_search_query,
+                context=last_agent_result + user_prompt,
+            )
             if arxiv_state:
                 arxiv_state.append(arxiv_result)
             else:
@@ -87,77 +104,126 @@ def main():
             continue
 
         if "[Executor]" in user_prompt:
-            user_prompt = user_prompt.replace("[Executor]","")
+            user_prompt = user_prompt.replace("[Executor]", "")
             if executor_state:
-                executor_state["messages"].append(HumanMessage(f"The last agent output was: {last_agent_result}\n The user stated: {user_prompt}"))
-                executor_state = executor.action.invoke(executor_state, {
+                executor_state["messages"].append(
+                    HumanMessage(
+                        f"The last agent output was: {last_agent_result}\n The user stated: {user_prompt}"
+                    )
+                )
+                executor_state = executor.action.invoke(
+                    executor_state,
+                    {
                         "recursion_limit": 999999,
                         "configurable": {"thread_id": executor.thread_id},
-                    })
+                    },
+                )
                 last_agent_result = executor_state["messages"][-1].content
             else:
-                executor_state = {"workspace":workspace}
-                executor_state["messages"] = [HumanMessage(f"The last agent output was: {last_agent_result}\n The user stated: {user_prompt}")]
-                executor_state = executor.action.invoke(executor_state, {
+                executor_state = {"workspace": workspace}
+                executor_state["messages"] = [
+                    HumanMessage(
+                        f"The last agent output was: {last_agent_result}\n The user stated: {user_prompt}"
+                    )
+                ]
+                executor_state = executor.action.invoke(
+                    executor_state,
+                    {
                         "recursion_limit": 999999,
                         "configurable": {"thread_id": executor.thread_id},
-                    })
+                    },
+                )
                 last_agent_result = executor_state["messages"][-1].content
             print(f"[Executor Agent Output]:\n {last_agent_result}")
             continue
 
         if "[Planner]" in user_prompt:
-            user_prompt = user_prompt.replace("[Planner]","")
+            user_prompt = user_prompt.replace("[Planner]", "")
             if planner_state:
-                planner_state["messages"].append(HumanMessage(f"The last agent output was: {last_agent_result}\n The user stated: {user_prompt}"))
-                planner_state = planner.action.invoke(planner_state, {
+                planner_state["messages"].append(
+                    HumanMessage(
+                        f"The last agent output was: {last_agent_result}\n The user stated: {user_prompt}"
+                    )
+                )
+                planner_state = planner.action.invoke(
+                    planner_state,
+                    {
                         "recursion_limit": 999999,
                         "configurable": {"thread_id": planner.thread_id},
-                    })
+                    },
+                )
                 last_agent_result = planner_state["messages"][-1].content
             else:
-                planner_state = {"messages":[HumanMessage(f"The last agent output was: {last_agent_result}\n The user stated: {user_prompt}")]}
-                planner_state = planner.action.invoke(planner_state, {
+                planner_state = {
+                    "messages": [
+                        HumanMessage(
+                            f"The last agent output was: {last_agent_result}\n The user stated: {user_prompt}"
+                        )
+                    ]
+                }
+                planner_state = planner.action.invoke(
+                    planner_state,
+                    {
                         "recursion_limit": 999999,
                         "configurable": {"thread_id": planner.thread_id},
-                    })
+                    },
+                )
                 last_agent_result = planner_state["messages"][-1].content
             print(f"[Planner Agent Output]:\n {last_agent_result}")
             continue
 
         if "[WebSearcher]" in user_prompt:
-            user_prompt = user_prompt.replace("[WebSearcher]","")
+            user_prompt = user_prompt.replace("[WebSearcher]", "")
             if websearcher_state:
-                websearcher_state["messages"].append(HumanMessage(f"The last agent output was: {last_agent_result}\n The user stated: {user_prompt}"))
-                websearcher_state = websearcher.action.invoke(websearcher_state, {
+                websearcher_state["messages"].append(
+                    HumanMessage(
+                        f"The last agent output was: {last_agent_result}\n The user stated: {user_prompt}"
+                    )
+                )
+                websearcher_state = websearcher.action.invoke(
+                    websearcher_state,
+                    {
                         "recursion_limit": 999999,
                         "configurable": {"thread_id": websearcher.thread_id},
-                    })
+                    },
+                )
                 last_agent_result = websearcher_state["messages"][-1].content
             else:
-                websearcher_state = {"messages":[HumanMessage(f"The last agent output was: {last_agent_result}\n The user stated: {user_prompt}")]}
-                websearcher_state = websearcher.action.invoke(websearcher_state, {
+                websearcher_state = {
+                    "messages": [
+                        HumanMessage(
+                            f"The last agent output was: {last_agent_result}\n The user stated: {user_prompt}"
+                        )
+                    ]
+                }
+                websearcher_state = websearcher.action.invoke(
+                    websearcher_state,
+                    {
                         "recursion_limit": 999999,
                         "configurable": {"thread_id": websearcher.thread_id},
-                    })
+                    },
+                )
                 last_agent_result = websearcher_state["messages"][-1].content
             print(f"[Planner Agent Output]:\n {last_agent_result}")
             continue
 
         if "[Rememberer]" in user_prompt:
-            user_prompt = user_prompt.replace("[Rememberer]","")
+            user_prompt = user_prompt.replace("[Rememberer]", "")
             memory_output = rememberer.remember(user_prompt)
             print(f"[Rememberer Output]:\n {memory_output}")
             continue
 
         if "[Chatter]" in user_prompt:
-            user_prompt = user_prompt.replace("[Chatter]","")
-            chat_output = model.invoke(f"The last agent output was: {last_agent_result}\n The user stated: {user_prompt}")
+            user_prompt = user_prompt.replace("[Chatter]", "")
+            chat_output = model.invoke(
+                f"The last agent output was: {last_agent_result}\n The user stated: {user_prompt}"
+            )
             last_agent_result = chat_output.content
             print(f"[Chatter Output]:\n {last_agent_result}")
             continue
 
         print("You did not invoke an agent or escape. What are you doing?")
-    
+
+
 if __name__ == "__main__":
     main()

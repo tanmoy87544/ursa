@@ -357,7 +357,7 @@ class HypothesizerAgent(BaseAgent):
             You are a system that produces a FULL LaTeX document.
             Here is information about a multi-iteration process:
 
-            Original question: {state['question']}
+            Original question: {state["question"]}
 
             Below are the solutions, critiques, and competitor perspectives from each iteration:
 
@@ -365,7 +365,7 @@ class HypothesizerAgent(BaseAgent):
 
             The final solution we arrived at was:
 
-            {state['final_solution']}
+            {state["final_solution"]}
 
             Now produce a valid LaTeX document.  Be sure to use a table of contents.
             It must start with an Executive Summary (that may be multiple pages) which summarizes
@@ -487,7 +487,7 @@ class HypothesizerAgent(BaseAgent):
 
         self.action = self.graph.compile(checkpointer=self.checkpointer)
         # self.action.get_graph().draw_mermaid_png(output_file_path="hypothesizer_agent_graph.png", draw_method=MermaidDrawMethod.PYPPETEER)
-    
+
     def run(self, prompt, max_iter=3, recursion_limit=99999):
         # Initialize the state
         initial_state = HypothesizerState(
@@ -501,10 +501,13 @@ class HypothesizerAgent(BaseAgent):
         )
         # Run the graph
         result = hypothesizer_agent.action.invoke(
-            initial_state, {"recursion_limit": recursion_limit, "configurable": {"thread_id": self.thread_id}}
+            initial_state,
+            {
+                "recursion_limit": recursion_limit,
+                "configurable": {"thread_id": self.thread_id},
+            },
         )
         return result["final_solution"]
-
 
 
 def should_continue(state: HypothesizerState) -> Literal["continue", "finish"]:
@@ -583,7 +586,11 @@ if __name__ == "__main__":
     print("[DEBUG] Invoking the graph...")
     # Run the graph
     result = hypothesizer_agent.action.invoke(
-        initial_state, {"recursion_limit": 999999, "configurable": {"thread_id": self.thread_id}}
+        initial_state,
+        {
+            "recursion_limit": 999999,
+            "configurable": {"thread_id": self.thread_id},
+        },
     )
     summary_text = result["summary_report"]
 

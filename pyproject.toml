@@ -79,5 +79,6 @@ pycodestyle.max-doc-length = 80
 dev = [
     "langgraph-checkpoint-sqlite>=2.0.10",
     "notebook>=7.3.3",
+    "pre-commit>=4.3.0",
     "scikit-optimize>=0.10.2",
 ]

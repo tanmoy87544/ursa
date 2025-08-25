@@ -6,6 +6,7 @@ from langchain_litellm import ChatLiteLLM
 from ursa.agents import ArxivAgent
 from ursa.agents import ExecutionAgent
 
+
 def main():
     model = ChatLiteLLM(
         model="openai/o3",
@@ -47,5 +48,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-

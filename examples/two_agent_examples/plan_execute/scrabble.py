@@ -13,7 +13,7 @@ from rich.panel import Panel
 from rich.progress import BarColumn, Progress, SpinnerColumn, TextColumn
 from rich.text import Text
 
-console = get_console() # always returns the same instance
+console = get_console()  # always returns the same instance
 
 
 def main(mode: str):
