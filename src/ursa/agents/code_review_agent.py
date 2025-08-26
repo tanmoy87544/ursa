@@ -7,7 +7,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.tools import tool
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.message import add_messages
-from langgraph.prebuilt import ToolNode, InjectedState
+from langgraph.prebuilt import InjectedState, ToolNode
 from typing_extensions import TypedDict
 
 from ..prompt_library.code_review_prompts import (
@@ -349,7 +349,7 @@ def main():
     }
     result = (
         code_review_agent.action.invoke(initial_state),
-        {"configurable": {"thread_id": self.thread_id}},
+        {"configurable": {"thread_id": 42}},
     )
     for x in result["messages"]:
         print(x.content)

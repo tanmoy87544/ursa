@@ -1,29 +1,29 @@
+import base64
 import os
+import re
+import statistics
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from io import BytesIO
+from urllib.parse import quote
+
+import feedparser
 import pymupdf
 import requests
-import feedparser
-from PIL import Image
-from io import BytesIO
-import base64
-from urllib.parse import quote
-from typing_extensions import TypedDict, List
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from tqdm import tqdm
-import statistics
-import re
-
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_chroma import Chroma
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
-from langgraph.graph import StateGraph, END, START
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_chroma import Chroma
+from langgraph.graph import StateGraph
+from PIL import Image
+from tqdm import tqdm
+from typing_extensions import List, TypedDict
 
 from .base import BaseAgent
 
 try:
     from openai import OpenAI
-except:
+except Exception:
     pass
 
 # embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
@@ -162,7 +162,7 @@ class ArxivAgent(BaseAgent):
                 full_id = entry.id.split("/abs/")[-1]
                 arxiv_id = full_id.split("/")[-1]
                 title = entry.title.strip()
-                authors = ", ".join(author.name for author in entry.authors)
+                # authors = ", ".join(author.name for author in entry.authors)
                 pdf_url = f"https://arxiv.org/pdf/{full_id}.pdf"
                 pdf_filename = os.path.join(
                     self.database_path, f"{arxiv_id}.pdf"
@@ -313,7 +313,7 @@ class ArxivAgent(BaseAgent):
 
         if "papers" not in state or len(state["papers"]) == 0:
             print(
-                f"No papers retrieved - bad query or network connection to ArXiv?"
+                "No papers retrieved - bad query or network connection to ArXiv?"
             )
             return {**state, "summaries": None}
 

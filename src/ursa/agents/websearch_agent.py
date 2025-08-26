@@ -1,5 +1,3 @@
-import inspect
-
 # from langchain_community.tools    import TavilySearchResults
 # from langchain_core.runnables.graph import MermaidDrawMethod
 from typing import Annotated, Any, List, Optional
@@ -9,7 +7,6 @@ from bs4 import BeautifulSoup
 from langchain_community.tools import DuckDuckGoSearchResults
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage
-from langchain_core.tools import tool
 from langchain_openai import ChatOpenAI
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.message import add_messages
@@ -19,8 +16,8 @@ from typing_extensions import TypedDict
 
 from ..prompt_library.websearch_prompts import (
     reflection_prompt,
-    websearch_prompt,
     summarize_prompt,
+    websearch_prompt,
 )
 from .base import BaseAgent
 
@@ -41,6 +38,7 @@ class WebSearchState(TypedDict):
     remaining_steps: int
     is_last_step: bool
     model: Any
+    thread_id: Any
 
 
 # Adding the model to the state clumsily so that all "read" sources arent in the
@@ -113,8 +111,14 @@ class WebSearchAgent(BaseAgent):
         except (requests.ConnectionError, requests.Timeout):
             return False
 
+    def state_store_node(self, state: WebSearchState) -> WebSearchState:
+        state["thread_id"] = self.thread_id
+        return state
+        # return dict(**state, thread_id=self.thread_id)
+
     def _initialize_agent(self):
         self.graph = StateGraph(WebSearchState)
+        self.graph.add_node("state_store", self.state_store_node)
         self.graph.add_node(
             "websearch",
             create_react_agent(
@@ -128,7 +132,8 @@ class WebSearchAgent(BaseAgent):
         self.graph.add_node("review", self.review_node)
         self.graph.add_node("response", self.response_node)
 
-        self.graph.add_edge(START, "websearch")
+        self.graph.add_edge(START, "state_store")
+        self.graph.add_edge("state_store", "websearch")
         self.graph.add_edge("websearch", "review")
         self.graph.add_edge("response", END)
 
@@ -185,7 +190,9 @@ def process_content(
     """
     summarized_information = (
         state["model"]
-        .invoke(content_prompt, {"configurable": {"thread_id": self.thread_id}})
+        .invoke(
+            content_prompt, {"configurable": {"thread_id": state["thread_id"]}}
+        )
         .content
     )
     return summarized_information
@@ -217,7 +224,7 @@ def main():
         inputs,
         {
             "recursion_limit": 10000,
-            "configurable": {"thread_id": self.thread_id},
+            "configurable": {"thread_id": 42},
         },
     )
 

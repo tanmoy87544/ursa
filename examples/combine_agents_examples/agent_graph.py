@@ -1,27 +1,30 @@
-import os, sys
-import coolname
+import os
+from typing import Annotated, Literal
 
+import coolname
 from langchain_core.messages import (
+    AIMessage,
     HumanMessage,
     SystemMessage,
-    AIMessage,
-    ToolMessage,
 )
+from langchain_core.tools import tool
 from langchain_litellm import ChatLiteLLM
 from langchain_openai import OpenAIEmbeddings
-
-from ursa.agents import ArxivAgent, RecallAgent, BaseAgent, BaseChatModel
-from ursa.agents import ExecutionAgent, ExecutionState
-from ursa.prompt_library.execution_prompts import summarize_prompt
-from ursa.util.memory_logger import AgentMemory
-
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.message import add_messages
-from langgraph.prebuilt import ToolNode, InjectedState
-from langchain_core.tools import tool
-
-from typing import Annotated, Literal
+from langgraph.prebuilt import InjectedState, ToolNode
 from typing_extensions import TypedDict
+
+from ursa.agents import (
+    ArxivAgent,
+    BaseAgent,
+    BaseChatModel,
+    ExecutionAgent,
+    ExecutionState,
+    RecallAgent,
+)
+from ursa.prompt_library.execution_prompts import summarize_prompt
+from ursa.util.memory_logger import AgentMemory
 
 # --- ANSI color codes ---
 GREEN = "\033[92m"
@@ -49,14 +52,6 @@ Your responsibilities are as follows:
 
 Your goal is to carry out the provided plan accurately, safely, and transparently, maintaining accountability at each step.
 """
-
-
-class State(TypedDict):
-    messages: Annotated[list, add_messages]
-    current_progress: str
-    code_files: list[str]
-    workspace: str
-    arxiv_results: list[str]
 
 
 model = ChatLiteLLM(
@@ -164,7 +159,7 @@ class CombinedAgent(BaseAgent):
             )
         os.makedirs(new_state["workspace"], exist_ok=True)
 
-        if type(new_state["messages"][0]) == SystemMessage:
+        if isinstance(new_state["messages"][0], SystemMessage):
             new_state["messages"][0] = SystemMessage(content=self.runner_prompt)
         else:
             new_state["messages"] = [
@@ -187,7 +182,7 @@ class CombinedAgent(BaseAgent):
         memories = []
         # Handle looping through the messages
         for x in state["messages"]:
-            if not type(x) == AIMessage:
+            if not isinstance(x, AIMessage):
                 memories.append(x.content)
             elif not x.tool_calls:
                 memories.append(x.content)
