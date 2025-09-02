@@ -500,7 +500,7 @@ class HypothesizerAgent(BaseAgent):
             final_solution="",
         )
         # Run the graph
-        result = hypothesizer_agent.action.invoke(
+        result = self.action.invoke(
             initial_state,
             {
                 "recursion_limit": recursion_limit,
