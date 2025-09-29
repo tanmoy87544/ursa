@@ -2,7 +2,7 @@ import os
 import re
 import statistics
 from threading import Lock
-from typing import List, Optional, TypedDict
+from typing import TypedDict
 
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_chroma import Chroma
@@ -15,11 +15,18 @@ from langgraph.graph import StateGraph
 from ursa.agents.base import BaseAgent
 
 
+class RAGMetadata(TypedDict):
+    k: int
+    num_results: int
+    relevance_scores: list[float]
+
+
 class RAGState(TypedDict, total=False):
     context: str
-    doc_texts: List[str]
-    doc_ids: List[str]
+    doc_texts: list[str]
+    doc_ids: list[str]
     summary: str
+    rag_metadata: RAGMetadata
 
 
 def remove_surrogates(text: str) -> str:
@@ -29,8 +36,8 @@ def remove_surrogates(text: str) -> str:
 class RAGAgent(BaseAgent):
     def __init__(
         self,
+        embedding: Embeddings,
         llm="openai/o3-mini",
-        embedding: Optional[Embeddings] = None,
         return_k: int = 10,
         chunk_size: int = 1000,
         chunk_overlap: int = 200,
@@ -66,6 +73,7 @@ class RAGAgent(BaseAgent):
         return Chroma(
             persist_directory=self.vectorstore_path,
             embedding_function=self.embedding,
+            collection_metadata={"hnsw:space": "cosine"},
         )
 
     def _paper_exists_in_vectorstore(self, doc_id: str) -> bool:
@@ -146,6 +154,12 @@ class RAGAgent(BaseAgent):
             chunk_size=self.chunk_size, chunk_overlap=self.chunk_overlap
         )
 
+        if "doc_texts" not in state:
+            raise RuntimeError("Unexpected error: doc_ids not in state!")
+
+        if "doc_ids" not in state:
+            raise RuntimeError("Unexpected error: doc_texts not in state!")
+
         batch_docs, batch_ids = [], []
         for paper, id in zip(state["doc_texts"], state["doc_ids"]):
             cleaned_text = remove_surrogates(paper)
@@ -181,9 +195,14 @@ class RAGAgent(BaseAgent):
 
         # 2) One retrieval over the global DB with the task context
         try:
-            results = self.vectorstore.similarity_search_with_score(
+            if "context" not in state:
+                raise RuntimeError("Unexpected error: context not in state!")
+
+            results = self.vectorstore.similarity_search_with_relevance_scores(
                 state["context"], k=self.return_k
             )
+
+            relevance_scores = [score for _, score in results]
         except Exception as e:
             print(f"RAG failed due to: {e}")
             return {**state, "summary": ""}
@@ -194,13 +213,6 @@ class RAGAgent(BaseAgent):
             if aid and aid not in source_ids_list:
                 source_ids_list.append(aid)
         source_ids = ", ".join(source_ids_list)
-
-        # Compute a simple similarity-based quality score
-        relevancy_scores = []
-        if results:
-            distances = [score for _, score in results]
-            sims = [1.0 / (1.0 + d) for d in distances]  # map distance -> [0,1)
-            relevancy_scores = sims
 
         retrieved_content = (
             "\n\n".join(doc.page_content for doc, _ in results)
@@ -223,11 +235,11 @@ class RAGAgent(BaseAgent):
             f.write(rag_summary)
 
         # Diagnostics
-        if relevancy_scores:
-            print(f"\nMax Relevancy Score: {max(relevancy_scores):.4f}")
-            print(f"Min Relevancy Score: {min(relevancy_scores):.4f}")
+        if relevance_scores:
+            print(f"\nMax Relevance Score: {max(relevance_scores):.4f}")
+            print(f"Min Relevance Score: {min(relevance_scores):.4f}")
             print(
-                f"Median Relevancy Score: {statistics.median(relevancy_scores):.4f}\n"
+                f"Median Relevance Score: {statistics.median(relevance_scores):.4f}\n"
             )
         else:
             print("\nNo RAG results retrieved (score list empty).\n")
@@ -239,7 +251,7 @@ class RAGAgent(BaseAgent):
             "rag_metadata": {
                 "k": self.return_k,
                 "num_results": len(results),
-                "relevancy_scores": relevancy_scores,
+                "relevance_scores": relevance_scores,
             },
         }
 
@@ -259,14 +271,15 @@ class RAGAgent(BaseAgent):
 
     def run(self, context: str) -> str:
         result = self.graph.invoke({"context": context})
-
         return result.get("summary", "No summary generated.")
 
 
-if __name__ == "__main__":
-    agent = RAGAgent(database_path="workspace/arxiv_papers_neutron_star")
-    result = agent.run(
-        context="What are the constraints on the neutron star radius and what uncertainties are there on the constraints?",
-    )
-
-    print(result)
+# NOTE: Run test in `tests/agents/test_rag_agent/test_rag_agent.py` via:
+#
+# pytest -s tests/agents/test_rag_agent
+#
+# OR
+#
+# uv run pytest -s tests/agents/test_rag_agent
+#
+# NOTE: You may need to `rm -rf workspace/rag-agent` to remove the vectorstore.
